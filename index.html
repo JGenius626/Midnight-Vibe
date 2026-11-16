@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Midnight Vibe — Prototype 47 (Cyberpunk AFK Room & Home Mode)</title>
+  <title>Midnight Vibe — Prototype 48 (Optimized Atmosphere & Monitor UI)</title>
   <style>
     * {
       margin: 0;
@@ -12,7 +12,7 @@
     }
     body {
       overflow: hidden;
-      background-color: #03050c;
+      background-color: #070b19;
       font-family: 'Courier New', Courier, monospace;
       color: #a8ff00;
     }
@@ -37,6 +37,7 @@
       font-size: 0.85rem;
       color: #c8a2ff;
       margin-top: 6px;
+      transition: opacity 0.35s ease;
     }
 
     #telemetry {
@@ -46,7 +47,7 @@
       text-align: right;
       pointer-events: none;
       z-index: 10;
-      background: #07040f;
+      background: #0f1428;
       border: 1px solid rgba(168, 255, 0, 0.4);
       padding: 12px 18px;
       border-radius: 6px;
@@ -55,6 +56,39 @@
     }
     #telemetry.hidden {
       opacity: 0;
+    }
+
+    #checkpoint-toast {
+      position: fixed;
+      top: 28%;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background: rgba(12, 18, 36, 0.92);
+      border: 1px solid #a8ff00;
+      box-shadow: 0 0 24px rgba(168, 255, 0, 0.35);
+      color: #a8ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      text-align: center;
+      padding: 16px 36px;
+      border-radius: 6px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 40;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    #checkpoint-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+    #checkpoint-toast span {
+      display: block;
+      font-size: 1.6rem;
+      font-weight: bold;
+      margin-top: 6px;
+      color: #00f0ff;
+      text-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
     }
 
     #speedometer-br {
@@ -110,12 +144,40 @@
       letter-spacing: 1px;
     }
 
+    /* Avviso pre-AFK: PIT-STOP TRA... */
+    #afk-warning {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(12, 18, 36, 0.92);
+      border: 1px solid rgba(255, 42, 109, 0.65);
+      border-radius: 6px;
+      padding: 10px 22px;
+      z-index: 15;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      text-align: center;
+      box-shadow: 0 0 18px rgba(255, 42, 109, 0.25);
+    }
+    #afk-warning.visible {
+      opacity: 1;
+    }
+    #afk-warning span {
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      color: #ff2a6d;
+      text-shadow: 0 0 8px rgba(255, 42, 109, 0.7);
+      font-weight: bold;
+    }
+
     /* MINI RADIO ALGORHYTHM */
     #mini-radio {
       position: fixed;
       bottom: 24px;
       left: 24px;
-      background: rgba(10, 5, 22, 0.96);
+      background: rgba(12, 18, 36, 0.96);
       border: 1px solid rgba(0, 240, 255, 0.5);
       border-radius: 8px;
       padding: 10px 14px 12px 14px;
@@ -137,7 +199,7 @@
       font-weight: bold;
     }
     .radio-display {
-      background: #03050c;
+      background: #070b19;
       border: 1px solid rgba(0, 240, 255, 0.35);
       border-radius: 4px;
       padding: 5px 8px;
@@ -163,7 +225,7 @@
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: radial-gradient(circle, #180c33 35%, #07040f 90%);
+      background: radial-gradient(circle, #201844 35%, #0f1428 90%);
       border: 2px solid rgba(0, 240, 255, 0.55);
       color: #00f0ff;
       font-family: 'Courier New', monospace;
@@ -218,7 +280,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(3, 5, 12, 0.95);
+      background: rgba(7, 11, 25, 0.95);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -261,7 +323,7 @@
     }
     .btn-start-main:hover {
       background: #00f0ff;
-      color: #03050c;
+      color: #070b19;
       box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
     }
 
@@ -271,7 +333,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) scale(0.95);
-      background: rgba(10, 5, 22, 0.95);
+      background: rgba(12, 18, 36, 0.95);
       border: 1px solid #00f0ff;
       box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), inset 0 0 20px rgba(168, 255, 0, 0.08);
       border-radius: 8px;
@@ -302,7 +364,7 @@
       line-height: 1.4;
     }
     .modal-km-box {
-      background: rgba(20, 10, 42, 0.85);
+      background: rgba(18, 24, 48, 0.85);
       border: 1px solid rgba(168, 255, 0, 0.4);
       border-radius: 6px;
       padding: 12px 16px;
@@ -345,7 +407,7 @@
     }
     .btn-continue:hover {
       background: #a8ff00;
-      color: #03050c;
+      color: #070b19;
     }
     .btn-home {
       background: rgba(0, 240, 255, 0.12);
@@ -354,18 +416,16 @@
     }
     .btn-home:hover {
       background: #00f0ff;
-      color: #03050c;
+      color: #070b19;
     }
 
-    /* HUD MINIMALE IN STANZA (HOME AFK MODE) */
+    /* HUD MINIMALE IN STANZA (SOLO SCRITTA SAFEHOUSE) */
     #home-hud {
       position: fixed;
       top: 20px;
       left: 24px;
-      right: 24px;
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      flex-direction: column;
       pointer-events: none;
       z-index: 25;
       opacity: 0;
@@ -375,11 +435,10 @@
       opacity: 1;
     }
     .home-badge {
-      background: rgba(10, 5, 22, 0.9);
+      background: rgba(12, 18, 36, 0.9);
       border: 1px solid rgba(0, 240, 255, 0.45);
       border-radius: 6px;
       padding: 10px 16px;
-      pointer-events: auto;
       box-shadow: 0 0 16px rgba(0, 240, 255, 0.2);
     }
     .home-badge h2 {
@@ -387,32 +446,6 @@
       letter-spacing: 2.5px;
       color: #00f0ff;
       text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
-    }
-    .home-badge p {
-      font-size: 0.75rem;
-      color: #c8a2ff;
-      margin-top: 4px;
-    }
-    #btn-back-to-drive {
-      pointer-events: auto;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 0.85rem;
-      font-weight: bold;
-      letter-spacing: 1.5px;
-      padding: 12px 22px;
-      background: rgba(168, 255, 0, 0.15);
-      color: #a8ff00;
-      border: 1px solid #a8ff00;
-      border-radius: 6px;
-      cursor: pointer;
-      text-transform: uppercase;
-      box-shadow: 0 0 15px rgba(168, 255, 0, 0.25);
-      transition: all 0.2s ease;
-    }
-    #btn-back-to-drive:hover {
-      background: #a8ff00;
-      color: #03050c;
-      box-shadow: 0 0 25px rgba(168, 255, 0, 0.65);
     }
 
     @keyframes slowPulse {
@@ -434,24 +467,24 @@
   <!-- SCHERMATA START INIZIALE -->
   <div id="start-screen">
     <div class="start-title">Midnight Vibe</div>
-    <div class="start-subtitle">ALGORHYTHM // PROTOTYPE 47</div>
-    <button class="btn-start-main" id="btn-start-game">START // ACCENDI MOTORE</button>
+    <button class="btn-start-main" id="btn-start-game">START</button>
   </div>
 
   <div id="hud">
-    <h1>MIDNIGHT VIBE // PROTOTYPE 47</h1>
-    <p>[A / D] sterza  |  [W / S] velocità (0 - 320 KM/H)</p>
+    <p id="controls-hint">[A / D] sterza  |  [W / S] accelera / frena</p>
   </div>
 
   <div id="telemetry">
     <div class="stat-value" id="km-display">0.00 KM</div>
   </div>
 
+  <div id="checkpoint-toast">CHECKPOINT<br><span id="checkpoint-km">100 KM</span></div>
+
   <div id="speedometer-br">
     <canvas id="analog-gauge" width="140" height="140"></canvas>
   </div>
 
-  <!-- MINI RADIO ALGORHYTHM (SEMPRE DISPONIBILE ANCHE IN HOME) -->
+  <!-- MINI RADIO ALGORHYTHM -->
   <div id="mini-radio">
     <div class="radio-header">
       <span class="radio-title">ALGORHYTHM</span>
@@ -462,6 +495,10 @@
       <button class="round-knob" id="knob-station">FM</button>
       <button class="round-knob vol-knob" id="knob-vol">70</button>
     </div>
+  </div>
+
+  <div id="afk-warning">
+    <span id="afk-warning-text">PIT STOP TRA 5s</span>
   </div>
 
   <div id="stop-dashboard-indicator">
@@ -483,12 +520,13 @@
         letter-spacing="2"
       >STOP</text>
     </svg>
-    <span>PIT STOP IN: <strong id="pit-timer">10s</strong></span>
+    <span>PIT STOP IN: <strong id="pit-timer">5s</strong></span>
   </div>
 
-  <!-- MODALE PIT STOP (CONTINUA / HOME) -->
+  
+  <!-- MODALE PIT STOP -->
   <div id="rest-modal">
-    <h2>PIT STOP // SESSIONE IN PAUSA</h2>
+    <h2>PIT STOP</h2>
     <p>Sei fermo nella piazzola di sosta.<br>Cosa desideri fare?</p>
     <div class="modal-km-box">
       <div class="modal-km-label">DISTANZA PERCORSA</div>
@@ -500,13 +538,11 @@
     </div>
   </div>
 
-  <!-- HUD STANZA 3D (HOME AFK MODE) -->
+  <!-- HUD STANZA 3D -->
   <div id="home-hud">
     <div class="home-badge">
-      <h2>SAFEHOUSE // AFK LOUNGE</h2>
-      <p>Modalità relax attiva — Usa la radio Algorhythm in basso a sinistra</p>
+      <h2>SAFEHOUSE</h2>
     </div>
-    <button id="btn-back-to-drive">TORNA ALLA GUIDA</button>
   </div>
 
   <script type="importmap">
@@ -520,7 +556,7 @@
   <script type="module">
     import * as THREE from 'three';
 
-    // 0. CONFIGURAZIONE STAZIONI RADIO E SHUFFLE
+    // 0. CONFIGURAZIONE STAZIONI RADIO E LINK CORRETTI (FIXED URLS)
     const radioStations = {
       PulseFM: {
         name: "PULSE FM",
@@ -558,7 +594,7 @@
           { title: "HAZE // Cattive Vibes", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Cattive%20Vibes.mp3" },
           { title: "HAZE // Cielo Che Cambia Tono", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Cielo%20Che%20Cambia%20Tono.mp3" },
           { title: "HAZE // FUORI", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/FUORI.mp3" },
-          { title: "HAZE // Hey, Hey, Hey", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Hey,%20Hey,%20Hey.mp3" },
+          { title: "HAZE // Hey Hey Hey", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Hey%20Hey%20Hey.mp3" },
           { title: "HAZE // Master in Psicologia", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Master%20in%20Psicologia.mp3" },
           { title: "HAZE // Night Shift", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Night%20Shift.mp3" },
           { title: "HAZE // Sunday Light", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Sunday%20Light.mp3" },
@@ -585,11 +621,20 @@
     const knobStation = document.getElementById('knob-station');
     const knobVol = document.getElementById('knob-vol');
 
-    function generateShuffledQueue(stationKey) {
+    // Shuffle senza ripetizioni: esaurisce tutta la playlist prima di riscrivere
+    // Evita anche di far partire subito la stessa canzone appena finita
+    let lastPlayedUrl = null;
+
+    function generateShuffledQueue(stationKey, avoidUrl = null) {
       const playlist = [...radioStations[stationKey].playlist];
       for (let i = playlist.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
+      }
+      // Se la prima canzone del nuovo ciclo è uguale all'ultima ascoltata, scambiala
+      if (avoidUrl && playlist.length > 1 && playlist[0].url === avoidUrl) {
+        const swapIdx = 1 + Math.floor(Math.random() * (playlist.length - 1));
+        [playlist[0], playlist[swapIdx]] = [playlist[swapIdx], playlist[0]];
       }
       return playlist;
     }
@@ -597,10 +642,12 @@
     function loadAndPlayCurrentTrack() {
       if (!radioOn) return;
       if (shuffledQueue.length === 0 || queueIndex >= shuffledQueue.length) {
-        shuffledQueue = generateShuffledQueue(currentStationKey);
+        // Nuovo ciclo solo quando l'elenco è finito → nessuna ripetizione a metà
+        shuffledQueue = generateShuffledQueue(currentStationKey, lastPlayedUrl);
         queueIndex = 0;
       }
       const track = shuffledQueue[queueIndex];
+      lastPlayedUrl = track.url;
       audioElement.src = track.url;
       radioDisplay.textContent = track.title;
       audioElement.volume = volumeSteps[volumeStepIndex] / 100;
@@ -615,6 +662,7 @@
     function setStation(stationKey) {
       currentStationKey = stationKey;
       stationIndex = stationKeys.indexOf(stationKey);
+      lastPlayedUrl = null;
       shuffledQueue = generateShuffledQueue(stationKey);
       queueIndex = 0;
 
@@ -661,24 +709,92 @@
 
     let gameStarted = false;
     let isHomeMode = false;
+    let isMonitorZoomed = false;
+
+    // === SUONO MOTORE (Web Audio API, senza file esterni) ===
+    let audioCtx = null;
+    let engineOsc = null;
+    let engineOsc2 = null;
+    let engineGain = null;
+    let engineFilter = null;
+    let engineStarted = false;
+
+    function initEngineSound() {
+      if (engineStarted) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        engineOsc = audioCtx.createOscillator();
+        engineOsc.type = 'sawtooth';
+        engineOsc.frequency.value = 55;
+        engineOsc2 = audioCtx.createOscillator();
+        engineOsc2.type = 'square';
+        engineOsc2.frequency.value = 27.5;
+        engineFilter = audioCtx.createBiquadFilter();
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = 450;
+        engineFilter.Q.value = 1.2;
+        engineGain = audioCtx.createGain();
+        engineGain.gain.value = 0;
+        engineOsc.connect(engineFilter);
+        engineOsc2.connect(engineFilter);
+        engineFilter.connect(engineGain);
+        engineGain.connect(audioCtx.destination);
+        engineOsc.start();
+        engineOsc2.start();
+        engineStarted = true;
+      } catch (e) {
+        console.warn('Engine audio unavailable', e);
+      }
+    }
+
+    function updateEngineSound(kmh, muted) {
+      if (!engineStarted || !engineGain) return;
+      if (muted || kmh < 1) {
+        engineGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        return;
+      }
+      const t = Math.min(kmh / 320, 1);
+      const freq = 48 + t * 160;
+      const vol = 0.05 + t * 0.12;
+      engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.04);
+      if (engineOsc2) engineOsc2.frequency.setTargetAtTime(freq * 0.5, audioCtx.currentTime, 0.04);
+      engineFilter.frequency.setTargetAtTime(300 + t * 1100, audioCtx.currentTime, 0.06);
+      engineGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+    }
+
+    // Checkpoint ogni 100 KM
+    let nextCheckpointKm = 100;
+    const checkpointToast = document.getElementById('checkpoint-toast');
+    const checkpointKmEl = document.getElementById('checkpoint-km');
+    let checkpointHideTimer = null;
+
+    function showCheckpoint(km) {
+      if (!checkpointToast) return;
+      checkpointKmEl.textContent = `${km} KM`;
+      checkpointToast.classList.add('visible');
+      if (checkpointHideTimer) clearTimeout(checkpointHideTimer);
+      checkpointHideTimer = setTimeout(() => {
+        checkpointToast.classList.remove('visible');
+      }, 2800);
+    }
 
     const startScreen = document.getElementById('start-screen');
     const btnStartGame = document.getElementById('btn-start-game');
     const hudEl = document.getElementById('hud');
     const homeHudEl = document.getElementById('home-hud');
     const btnHome = document.getElementById('btn-home');
-    const btnBackToDrive = document.getElementById('btn-back-to-drive');
 
-    // 1. SCENA, CAMERA E NEBBIA
-    const bgColor = 0x03050c;
+    // 1. SCENA, CAMERA E CIELO NOTTURNO PIÙ CHIARO (MENO NEBBIA)
+    const bgColor = 0x070b1a;
     const limeColor = 0xa8ff00;
     const cyanColor = 0x00f0ff;
-    const purpleAccent = 0x4a188f;
+    const purpleAccent = 0x5e23b6;
     const stopRedColor = 0xff2a6d;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
-    scene.fog = new THREE.FogExp2(bgColor, 0.012);
+    // Nebbia più densa e “umida” per atmosfera metropolitana bagnata
+    scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
 
     const camera = new THREE.PerspectiveCamera(
       65,
@@ -694,7 +810,6 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
-    // GRUPPI SCENA SEPARATI: AUTOSTRADA vs STANZA (HOME)
     const highwayGroup = new THREE.Group();
     scene.add(highwayGroup);
 
@@ -702,54 +817,111 @@
     roomGroup.visible = false;
     scene.add(roomGroup);
 
-    // 2. ILLUMINAZIONE GLOBALE
-    const ambientLight = new THREE.AmbientLight(0x1d1038, 2.0);
+    // ILLUMINAZIONE — atmosfera notturna umida
+    const ambientLight = new THREE.AmbientLight(0x1a1435, 1.8);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(cyanColor, 1.3);
-    dirLight.position.set(10, 20, 15);
+    const dirLight = new THREE.DirectionalLight(0x6a8cff, 1.1);
+    dirLight.position.set(8, 30, 12);
     highwayGroup.add(dirLight);
 
+    const cityGlow = new THREE.HemisphereLight(0x2a1a55, 0x0a0818, 0.9);
+    highwayGroup.add(cityGlow);
+
     // =========================================================================
-    // SEZIONE A: AMBIENTE AUTOSTRADA (HIGHWAY GROUP)
+    // SEZIONE A: AMBIENTE AUTOSTRADA — HIGHWAY METROPOLITANA BAGNATA
     // =========================================================================
     const roadWidth = 14;
 
+    // Terreno laterale più scuro e umido
     const groundGeo = new THREE.PlaneGeometry(500, 300);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0617,
-      roughness: 0.9,
-      metalness: 0.1
+      color: 0x0c0f1c,
+      roughness: 0.55,
+      metalness: 0.35
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.05, -120);
     highwayGroup.add(ground);
 
+    // Asfalto bagnato: più riflettente
     const roadGeo = new THREE.PlaneGeometry(roadWidth, 260);
     const roadMat = new THREE.MeshStandardMaterial({
-      color: 0x07040f,
-      roughness: 0.3,
-      metalness: 0.7
+      color: 0x0a0c16,
+      roughness: 0.12,
+      metalness: 0.85
     });
     const road = new THREE.Mesh(roadGeo, roadMat);
     road.rotation.x = -Math.PI / 2;
     road.position.z = -110;
     highwayGroup.add(road);
 
+    // Piazzola di sosta leggermente meno lucida
     const restAreaGeo = new THREE.PlaneGeometry(4, 260);
     const restAreaMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0514,
-      roughness: 0.35,
-      metalness: 0.6
+      color: 0x0d101c,
+      roughness: 0.22,
+      metalness: 0.7
     });
     const restArea = new THREE.Mesh(restAreaGeo, restAreaMat);
     restArea.rotation.x = -Math.PI / 2;
     restArea.position.set(roadWidth / 2 + 2, -0.01, -110);
     highwayGroup.add(restArea);
 
-    const borderGeo = new THREE.BoxGeometry(0.22, 0.08, 260);
-    const borderMat = new THREE.MeshBasicMaterial({ color: limeColor });
+    // Area di parcheggio delimitata (centrata sull'auto a z=0)
+    const parkBayGroup = new THREE.Group();
+    parkBayGroup.visible = false;
+    const parkLineMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const parkBayX = roadWidth / 2 + 2;
+    const parkBayZ = 0;
+    const parkLen = 7;
+    const parkW = 3.4;
+    const lineH = 0.05;
+    const lineT = 0.14;
+    const parkL1 = new THREE.Mesh(new THREE.BoxGeometry(lineT, lineH, parkLen), parkLineMat);
+    parkL1.position.set(parkBayX - parkW / 2, 0.05, parkBayZ);
+    parkBayGroup.add(parkL1);
+    const parkL2 = new THREE.Mesh(new THREE.BoxGeometry(lineT, lineH, parkLen), parkLineMat);
+    parkL2.position.set(parkBayX + parkW / 2, 0.05, parkBayZ);
+    parkBayGroup.add(parkL2);
+    const parkL3 = new THREE.Mesh(new THREE.BoxGeometry(parkW, lineH, lineT), parkLineMat);
+    parkL3.position.set(parkBayX, 0.05, parkBayZ - parkLen / 2);
+    parkBayGroup.add(parkL3);
+    const parkL4 = new THREE.Mesh(new THREE.BoxGeometry(parkW, lineH, lineT), parkLineMat);
+    parkL4.position.set(parkBayX, 0.05, parkBayZ + parkLen / 2);
+    parkBayGroup.add(parkL4);
+    const pCanvas = document.createElement('canvas');
+    pCanvas.width = 128;
+    pCanvas.height = 128;
+    const pCtx = pCanvas.getContext('2d');
+    pCtx.clearRect(0, 0, 128, 128);
+    pCtx.fillStyle = '#ffffff';
+    pCtx.font = 'bold 96px "Courier New", monospace';
+    pCtx.textAlign = 'center';
+    pCtx.textBaseline = 'middle';
+    pCtx.fillText('P', 64, 70);
+    const pTex = new THREE.CanvasTexture(pCanvas);
+    const pMark = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 1.5),
+      new THREE.MeshBasicMaterial({ map: pTex, transparent: true, side: THREE.DoubleSide })
+    );
+    pMark.rotation.x = -Math.PI / 2;
+    pMark.position.set(parkBayX, 0.06, parkBayZ);
+    parkBayGroup.add(pMark);
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+      const corner = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.05, 0.5),
+        new THREE.MeshBasicMaterial({ color: 0xff2a6d })
+      );
+      corner.position.set(parkBayX + sx * (parkW / 2 - 0.2), 0.05, parkBayZ + sz * (parkLen / 2 - 0.2));
+      parkBayGroup.add(corner);
+    });
+    highwayGroup.add(parkBayGroup);
+
+    // Bordi corsia molto visibili
+    const borderGeo = new THREE.BoxGeometry(0.22, 0.07, 260);
+    const borderMat = new THREE.MeshBasicMaterial({ color: 0xe8f0ff });
 
     const leftBorder = new THREE.Mesh(borderGeo, borderMat);
     leftBorder.position.set(-roadWidth / 2, 0.04, -110);
@@ -763,10 +935,9 @@
     outerBorder.position.set(roadWidth / 2 + 4, 0.04, -110);
     highwayGroup.add(outerBorder);
 
-    // 3B. PALETTI LUMINOSI BASSI A FILO STRADA
     const posts = [];
     const postGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x180c2e, roughness: 0.3 });
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x241740, roughness: 0.3 });
     const tipGeo = new THREE.BoxGeometry(0.14, 0.12, 0.14);
     const tipMat = new THREE.MeshBasicMaterial({ color: limeColor });
 
@@ -798,23 +969,34 @@
     }
 
     const stripes = [];
-    const stripeGeo = new THREE.BoxGeometry(0.2, 0.04, 3.5);
-    const stripeMat = new THREE.MeshBasicMaterial({ color: limeColor });
-    const stripeCount = 18;
-    const stripeSpacing = 14;
+    // Linea CONTINUA al centro = cambio di senso
+    const centerLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const centerLine = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 260), centerLineMat);
+    centerLine.position.set(0, 0.04, -110);
+    highwayGroup.add(centerLine);
+
+    // Due linee TRATTEGGIATE sinistra e destra = divisione corsie
+    const stripeGeo = new THREE.BoxGeometry(0.2, 0.05, 4.2);
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const stripeCount = 20;
+    const stripeSpacing = 12;
 
     for (let i = 0; i < stripeCount; i++) {
-      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-      stripe.position.set(0, 0.02, -i * stripeSpacing + 10);
-      highwayGroup.add(stripe);
-      stripes.push(stripe);
+      const z = -i * stripeSpacing + 10;
+      const stripeL = new THREE.Mesh(stripeGeo, stripeMat);
+      stripeL.position.set(-3.5, 0.04, z);
+      highwayGroup.add(stripeL);
+      stripes.push(stripeL);
+      const stripeR = new THREE.Mesh(stripeGeo, stripeMat);
+      stripeR.position.set(3.5, 0.04, z);
+      highwayGroup.add(stripeR);
+      stripes.push(stripeR);
     }
 
-    // 3C. LAMPIONI CYAN LATERALI
     const lamps = [];
     const lampSpacing = 22;
     const lampCount = 10;
-    const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x140a28, roughness: 0.3 });
+    const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
     const cyanBulbMat = new THREE.MeshBasicMaterial({ color: cyanColor });
 
     for (let i = 0; i < lampCount; i++) {
@@ -843,9 +1025,8 @@
       lamps.push(group);
     }
 
-    // 3D. PORTALE AUTOSTRADALE DINAMICO
     const gantryGroup = new THREE.Group();
-    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x140a28, roughness: 0.3 });
+    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
     const cableMat = new THREE.MeshBasicMaterial({ color: cyanColor });
 
     const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 0.4), gantryMat);
@@ -873,7 +1054,7 @@
       canvas.width = 512;
       canvas.height = 128;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0a0514';
+      ctx.fillStyle = '#0f1325';
       ctx.fillRect(0, 0, 512, 128);
       ctx.lineWidth = 6;
       ctx.strokeStyle = '#00f0ff';
@@ -882,11 +1063,11 @@
       ctx.font = 'bold 36px "Courier New", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`TRAGUARDO // ${kmText} KM`, 256, 64);
+      ctx.fillText(`CHECKPOINT // ${kmText} KM`, 256, 64);
       return new THREE.CanvasTexture(canvas);
     }
 
-    let nextTargetKm = 50;
+    let nextTargetKm = 100;
     let boardMat = new THREE.MeshBasicMaterial({ map: createDynamicBoardTexture(nextTargetKm) });
     const boardMesh = new THREE.Mesh(new THREE.BoxGeometry(roadWidth - 2, 2.2, 0.15), boardMat);
     boardMesh.position.set(0, 7.3, 0);
@@ -895,19 +1076,53 @@
     gantryGroup.position.set(0, 0, -500);
     highwayGroup.add(gantryGroup);
 
-    // 3E. SKYLINE CYBERPUNK
     const skylineBuildings = [];
+
+    // Texture finestre illuminate (una sola, riusata) — più realismo senza costi alti
+    function createWindowTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#12101f';
+      ctx.fillRect(0, 0, 128, 256);
+      const winColors = ['#1a3a5c', '#2a2040', '#0e2a3a', '#3a2850', '#152838', '#1e3050'];
+      for (let row = 0; row < 14; row++) {
+        for (let col = 0; col < 5; col++) {
+          if (Math.random() > 0.28) {
+            ctx.fillStyle = winColors[(row * 5 + col) % winColors.length];
+            ctx.fillRect(6 + col * 24, 8 + row * 17, 16, 12);
+            // piccola luce più chiara su alcune finestre
+            if (Math.random() > 0.7) {
+              ctx.fillStyle = 'rgba(180, 220, 255, 0.35)';
+              ctx.fillRect(6 + col * 24, 8 + row * 17, 16, 12);
+            }
+          }
+        }
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 1);
+      return tex;
+    }
+    const windowTex = createWindowTexture();
+
     const buildingMatDark = new THREE.MeshStandardMaterial({
-      color: 0x0e071c,
-      emissive: 0x260e4d,
+      color: 0x14101f,
+      map: windowTex,
+      emissive: 0x1a1030,
       emissiveIntensity: 0.35,
-      roughness: 0.6
+      roughness: 0.55,
+      metalness: 0.25
     });
     const buildingMatMid = new THREE.MeshStandardMaterial({
-      color: 0x130926,
-      emissive: purpleAccent,
-      emissiveIntensity: 0.25,
-      roughness: 0.5
+      color: 0x1a1428,
+      map: windowTex,
+      emissive: 0x241550,
+      emissiveIntensity: 0.3,
+      roughness: 0.5,
+      metalness: 0.3
     });
 
     const neonStripCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
@@ -915,18 +1130,18 @@
     const neonStripMagenta = new THREE.MeshBasicMaterial({ color: stopRedColor });
 
     const buildingSpecs = [
-      { w: 4.5, h: 24, d: 4.5, dist: 15, strip: neonStripCyan, antenna: true },
-      { w: 6.0, h: 16, d: 5.5, dist: 19, strip: null, antenna: false },
-      { w: 3.8, h: 30, d: 3.8, dist: 23, strip: neonStripMagenta, antenna: true },
-      { w: 5.5, h: 19, d: 5.0, dist: 16, strip: neonStripLime, antenna: false },
-      { w: 7.0, h: 26, d: 6.0, dist: 25, strip: neonStripCyan, antenna: true },
-      { w: 4.0, h: 14, d: 4.0, dist: 15, strip: null, antenna: false },
-      { w: 5.0, h: 34, d: 5.0, dist: 27, strip: neonStripCyan, antenna: true },
-      { w: 6.5, h: 21, d: 5.5, dist: 20, strip: neonStripMagenta, antenna: false }
+      { w: 5.0, h: 28, d: 5.0, dist: 16, strip: neonStripCyan, antenna: true },
+      { w: 6.5, h: 18, d: 6.0, dist: 20, strip: null, antenna: false },
+      { w: 4.2, h: 34, d: 4.2, dist: 24, strip: neonStripMagenta, antenna: true },
+      { w: 5.8, h: 22, d: 5.2, dist: 17, strip: neonStripLime, antenna: false },
+      { w: 7.5, h: 30, d: 6.5, dist: 26, strip: neonStripCyan, antenna: true },
+      { w: 4.5, h: 16, d: 4.5, dist: 15, strip: null, antenna: false },
+      { w: 5.5, h: 38, d: 5.5, dist: 28, strip: neonStripCyan, antenna: true },
+      { w: 7.0, h: 24, d: 6.0, dist: 21, strip: neonStripMagenta, antenna: false }
     ];
 
-    const skylineCount = 16;
-    const skylineSpacing = 28;
+    const skylineCount = 18;
+    const skylineSpacing = 26;
 
     for (let i = 0; i < skylineCount; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -941,22 +1156,40 @@
       mainMesh.position.y = spec.h / 2;
       bGroup.add(mainMesh);
 
+      // Facciata finestre più evidente sul lato strada
+      const facade = new THREE.Mesh(
+        new THREE.PlaneGeometry(spec.w * 0.92, spec.h * 0.9),
+        new THREE.MeshBasicMaterial({ map: windowTex, transparent: true, opacity: 0.85 })
+      );
+      facade.position.set(-side * (spec.w / 2 + 0.02), spec.h * 0.5, 0);
+      facade.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      bGroup.add(facade);
+
       if (spec.strip) {
-        const stripGeo = new THREE.BoxGeometry(0.14, spec.h * 0.72, 0.35);
+        const stripGeo = new THREE.BoxGeometry(0.12, spec.h * 0.78, 0.28);
         const stripMesh = new THREE.Mesh(stripGeo, spec.strip);
-        stripMesh.position.set(-side * (spec.w / 2 + 0.02), spec.h * 0.52, 0);
+        stripMesh.position.set(-side * (spec.w / 2 + 0.08), spec.h * 0.48, 0);
         bGroup.add(stripMesh);
       }
 
-      if (spec.antenna) {
-        const antGeo = new THREE.BoxGeometry(0.16, 4.5, 0.16);
-        const antMesh = new THREE.Mesh(antGeo, buildingMatDark);
-        antMesh.position.y = spec.h + 2.25;
-        bGroup.add(antMesh);
+      // Base dell'edificio un po' più scura
+      const baseMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(spec.w + 0.4, 1.2, spec.d + 0.4),
+        new THREE.MeshStandardMaterial({ color: 0x0c0a14, roughness: 0.7, metalness: 0.2 })
+      );
+      baseMesh.position.y = 0.6;
+      bGroup.add(baseMesh);
 
-        const beaconGeo = new THREE.BoxGeometry(0.26, 0.26, 0.26);
-        const beaconMesh = new THREE.Mesh(beaconGeo, spec.strip || neonStripCyan);
-        beaconMesh.position.y = spec.h + 4.5;
+      if (spec.antenna) {
+        const antGeo = new THREE.BoxGeometry(0.14, 5.0, 0.14);
+        const antMesh = new THREE.Mesh(antGeo, new THREE.MeshStandardMaterial({ color: 0x1a1528, metalness: 0.8 }));
+        antMesh.position.y = spec.h + 2.5;
+        bGroup.add(antMesh);
+        const beaconMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.28, 0.28, 0.28),
+          spec.strip || neonStripCyan
+        );
+        beaconMesh.position.y = spec.h + 5.0;
         bGroup.add(beaconMesh);
       }
 
@@ -965,30 +1198,42 @@
       skylineBuildings.push(bGroup);
     }
 
+    // Horizon skyline più denso e con luci
     const horizonSkyline = new THREE.Group();
     const horizonBlocks = [
-      { x: -65, w: 14, h: 38 }, { x: -48, w: 11, h: 52 }, { x: -34, w: 13, h: 32 },
-      { x: -20, w: 10, h: 46 }, { x: -8,  w: 9,  h: 28 }, { x: 9,   w: 11, h: 42 },
-      { x: 23,  w: 14, h: 56 }, { x: 39,  w: 12, h: 34 }, { x: 54,  w: 15, h: 48 }, { x: 70,  w: 13, h: 36 }
+      { x: -72, w: 16, h: 42 }, { x: -54, w: 12, h: 58 }, { x: -38, w: 14, h: 36 },
+      { x: -22, w: 11, h: 50 }, { x: -8,  w: 10, h: 30 }, { x: 8,   w: 12, h: 46 },
+      { x: 24,  w: 15, h: 62 }, { x: 42,  w: 13, h: 38 }, { x: 58,  w: 16, h: 52 }, { x: 74,  w: 14, h: 40 }
     ];
 
     for (let i = 0; i < horizonBlocks.length; i++) {
       const hb = horizonBlocks[i];
-      const hGeo = new THREE.BoxGeometry(hb.w, hb.h, 8);
+      const hGeo = new THREE.BoxGeometry(hb.w, hb.h, 10);
       const hMesh = new THREE.Mesh(hGeo, buildingMatDark);
-      hMesh.position.set(hb.x, hb.h / 2 - 2, -195);
+      hMesh.position.set(hb.x, hb.h / 2 - 2, -200);
       horizonSkyline.add(hMesh);
 
+      // Corona neon su alcuni
       if (i % 2 === 1) {
-        const crownGeo = new THREE.BoxGeometry(hb.w * 0.6, 0.35, 0.35);
-        const crownMesh = new THREE.Mesh(crownGeo, i % 4 === 1 ? neonStripCyan : neonStripMagenta);
-        crownMesh.position.set(hb.x, hb.h - 4, -190.8);
+        const crownMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(hb.w * 0.55, 0.4, 0.4),
+          i % 4 === 1 ? neonStripCyan : neonStripMagenta
+        );
+        crownMesh.position.set(hb.x, hb.h - 3, -195);
         horizonSkyline.add(crownMesh);
+      }
+      // Strip verticali occasionali
+      if (i % 3 === 0) {
+        const vStrip = new THREE.Mesh(
+          new THREE.BoxGeometry(0.25, hb.h * 0.6, 0.25),
+          neonStripLime
+        );
+        vStrip.position.set(hb.x + hb.w * 0.3, hb.h * 0.4, -194);
+        horizonSkyline.add(vStrip);
       }
     }
     highwayGroup.add(horizonSkyline);
 
-    // 3F. CARTELLO STRADALE STOP 3D
     function createStopSignTexture() {
       const canvas = document.createElement('canvas');
       canvas.width = 256;
@@ -1005,7 +1250,7 @@
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
-      ctx.fillStyle = '#2b0918';
+      ctx.fillStyle = '#3a1224';
       ctx.fill();
       ctx.lineWidth = 14;
       ctx.strokeStyle = '#ff2a6d';
@@ -1019,7 +1264,7 @@
     }
 
     const stopSignGroup = new THREE.Group();
-    const poleStop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x2c1b47, metalness: 0.8, roughness: 0.2 }));
+    const poleStop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x38255c, metalness: 0.8, roughness: 0.2 }));
     poleStop.position.set(0, 0.9, -0.06);
     stopSignGroup.add(poleStop);
 
@@ -1035,14 +1280,14 @@
     stopSignGroup.visible = false;
     highwayGroup.add(stopSignGroup);
 
-    // 4. L'AUTO COMPLETA CON TUTTI I DETTAGLI E I FARI ANTERIORI
+    // AUTO
     const carGroup = new THREE.Group();
-    const silverChassisMat = new THREE.MeshStandardMaterial({ color: 0x94a1b2, roughness: 0.2, metalness: 0.9 });
-    const trimDarkMat = new THREE.MeshStandardMaterial({ color: 0x11091f, roughness: 0.4, metalness: 0.6 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x05030a, roughness: 0.1, metalness: 0.95 });
-    const stripeSilverMat = new THREE.MeshBasicMaterial({ color: 0xdce5f2 });
+    const silverChassisMat = new THREE.MeshStandardMaterial({ color: 0xa3b2c6, roughness: 0.2, metalness: 0.9 });
+    const trimDarkMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4, metalness: 0.6 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c0716, roughness: 0.1, metalness: 0.95 });
+    const stripeSilverMat = new THREE.MeshBasicMaterial({ color: 0xe8f0fe });
     const tailRedMat = new THREE.MeshBasicMaterial({ color: stopRedColor });
-    const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x7c7296, metalness: 0.9, roughness: 0.2 });
+    const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x9082b2, metalness: 0.9, roughness: 0.2 });
 
     const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.52, 4.35), silverChassisMat);
     lowerBody.position.set(0, 0.52, 0);
@@ -1144,7 +1389,6 @@
       carGroup.add(pipe);
     });
 
-    // FARI ANTERIORI
     const headlightBulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     [-0.78, 0.78].forEach((hx) => {
       const headlightMesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), headlightBulbMat);
@@ -1178,15 +1422,14 @@
     carGroup.add(underglow);
     highwayGroup.add(carGroup);
 
-    // 4B. TRAFFICO
     const trafficCars = [];
-    const trafficColors = [0xff2a6d, 0x00f0ff, 0x94a1b2, 0x4a188f, 0xffb86c];
+    const trafficColors = [0xff2a6d, 0x00f0ff, 0xa3b2c6, 0x5e23b6, 0xffb86c];
     
     function createTrafficCarModel(isIncoming) {
       const group = new THREE.Group();
       const col = trafficColors[Math.floor(Math.random() * trafficColors.length)];
       const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 });
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0x11091f, roughness: 0.4 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4 });
       
       const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 4.0), bodyMat);
       body.position.y = 0.45;
@@ -1206,117 +1449,276 @@
       return group;
     }
 
-    const trafficCount = 10;
-    const spacingZ = 100;
+    function createTrafficBikeModel(isIncoming) {
+      const group = new THREE.Group();
+      const col = trafficColors[Math.floor(Math.random() * trafficColors.length)];
+      const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.85 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1228, roughness: 0.4, metalness: 0.6 });
+
+      // Corpo moto
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 1.9), bodyMat);
+      body.position.y = 0.55;
+      group.add(body);
+      // Sella
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.7), darkMat);
+      seat.position.set(0, 0.72, 0.15);
+      group.add(seat);
+      // Manubrio
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), darkMat);
+      handle.position.set(0, 0.85, -0.7);
+      group.add(handle);
+      // Ruote
+      const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const wMat = new THREE.MeshBasicMaterial({ color: 0x111118 });
+      const wF = new THREE.Mesh(wheelGeo, wMat);
+      wF.position.set(0, 0.28, -0.75);
+      group.add(wF);
+      const wR = new THREE.Mesh(wheelGeo, wMat);
+      wR.position.set(0, 0.28, 0.75);
+      group.add(wR);
+      // Faro
+      const lightMat = new THREE.MeshBasicMaterial({ color: isIncoming ? 0xffffff : 0xff2a6d });
+      const light = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.08), lightMat);
+      light.position.set(0, 0.55, isIncoming ? 0.98 : -0.98);
+      group.add(light);
+
+      return group;
+    }
+
+    const trafficCount = 12;
+    const spacingZ = 90;
     for (let i = 0; i < trafficCount; i++) {
-      const isIncoming = i < 5;
-      const laneIndex = i % 5;
+      const isIncoming = i < 6;
+      const laneIndex = i % 6;
       const xLane = isIncoming ? -2.2 : 1.5;
-      const zPos = -50 - (laneIndex * spacingZ);
+      const zPos = -40 - (laneIndex * spacingZ);
+      const isBike = (i % 4 === 1); // alcune moto
 
-      const carMesh = createTrafficCarModel(isIncoming);
-      carMesh.position.set(xLane, 0, zPos);
-      highwayGroup.add(carMesh);
+      const mesh = isBike ? createTrafficBikeModel(isIncoming) : createTrafficCarModel(isIncoming);
+      mesh.position.set(xLane, 0, zPos);
+      highwayGroup.add(mesh);
 
-      trafficCars.push({ mesh: carMesh, isIncoming: isIncoming, laneIndex: laneIndex });
+      trafficCars.push({
+        mesh,
+        isIncoming,
+        laneIndex,
+        halfLen: isBike ? 1.1 : 2.3,
+        halfWidth: isBike ? 0.45 : 1.1
+      });
+    }
+
+    // === TUNNEL periodici ===
+    const tunnels = [];
+    const tunnelMat = new THREE.MeshStandardMaterial({
+      color: 0x12151f,
+      roughness: 0.7,
+      metalness: 0.3
+    });
+    const tunnelInnerMat = new THREE.MeshBasicMaterial({ color: 0x0a0c14 });
+    const tunnelNeonMat = new THREE.MeshBasicMaterial({ color: cyanColor });
+    const tunnelCount = 3;
+    const tunnelSpacing = 280;
+
+    for (let i = 0; i < tunnelCount; i++) {
+      const tGroup = new THREE.Group();
+      // Pareti e soffitto (arco semplificato a box)
+      const wallL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7, 28), tunnelMat);
+      wallL.position.set(-roadWidth / 2 - 0.8, 3.5, 0);
+      tGroup.add(wallL);
+      const wallR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7, 28), tunnelMat);
+      wallR.position.set(roadWidth / 2 + 0.8, 3.5, 0);
+      tGroup.add(wallR);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3, 1.0, 28), tunnelMat);
+      roof.position.set(0, 7.2, 0);
+      tGroup.add(roof);
+      // Ingresso anelli neon
+      const ring1 = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25), tunnelNeonMat);
+      ring1.position.set(0, 7.5, 14);
+      tGroup.add(ring1);
+      const ring2 = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25), tunnelNeonMat);
+      ring2.position.set(0, 7.5, -14);
+      tGroup.add(ring2);
+      // Luci interne soffitto
+      for (let li = 0; li < 5; li++) {
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.6), tunnelNeonMat);
+        tl.position.set(0, 6.6, -10 + li * 5);
+        tGroup.add(tl);
+      }
+
+      tGroup.position.set(0, 0, -120 - i * tunnelSpacing);
+      highwayGroup.add(tGroup);
+      tunnels.push(tGroup);
     }
 
     // =========================================================================
-    // SEZIONE B: COSTRUZIONE STANZA 3D CYBERPUNK (HOME / AFK ROOM)
+    // SEZIONE B: STANZA 3D HOME PIÙ CHIARA CON PULSANTE NEL MONITOR
     // =========================================================================
+    const clickables = [];
+
     function buildCyberpunkRoom() {
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x0d061c, roughness: 0.7, metalness: 0.2 });
-      const trimPurpleMat = new THREE.MeshStandardMaterial({ color: 0x1e0e3d, roughness: 0.5 });
-      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x140a24, roughness: 0.4, metalness: 0.3 });
-      const bedSheetMat = new THREE.MeshStandardMaterial({ color: 0x2a1252, roughness: 0.8 });
-      const pillowMat = new THREE.MeshStandardMaterial({ color: 0x94a1b2, roughness: 0.6 });
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x221a42, roughness: 0.55, metalness: 0.15 });
+      const trimPurpleMat = new THREE.MeshStandardMaterial({ color: 0x2e1a5e, roughness: 0.4 });
+      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x221538, roughness: 0.4, metalness: 0.3 });
+      const bedSheetMat = new THREE.MeshStandardMaterial({ color: 0x42227d, roughness: 0.7 });
+      const pillowMat = new THREE.MeshStandardMaterial({ color: 0xbac7db, roughness: 0.5 });
       const glowCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
       const glowLime = new THREE.MeshBasicMaterial({ color: limeColor });
       const glowPink = new THREE.MeshBasicMaterial({ color: stopRedColor });
 
-      // 1. Pavimento, pareti e battiscopa neon
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), new THREE.MeshStandardMaterial({ color: 0x080412, roughness: 0.5 }));
+      // Pavimento più chiaro e visibile
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), new THREE.MeshStandardMaterial({ color: 0x1a1635, roughness: 0.4 }));
       floor.rotation.x = -Math.PI / 2;
       roomGroup.add(floor);
 
-      // Tappeto centrale
-      const rug = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.03, 3.8), new THREE.MeshStandardMaterial({ color: 0x160a2c, roughness: 0.9 }));
+      // Tappeto vivace a tema (magenta elettrico + bordo cyan)
+      const rug = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.03, 3.8), new THREE.MeshStandardMaterial({ color: 0x6b1f8a, roughness: 0.75, emissive: 0x2a0a40, emissiveIntensity: 0.25 }));
       rug.position.set(0, 0.015, 0.5);
       roomGroup.add(rug);
-      const rugBorder = new THREE.Mesh(new THREE.BoxGeometry(5.3, 0.02, 3.9), glowCyan);
+      const rugBorder = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.025, 3.95), glowCyan);
       rugBorder.position.set(0, 0.01, 0.5);
       roomGroup.add(rugBorder);
 
-      // Parete posteriore (Z = -5)
       const backWall = new THREE.Mesh(new THREE.BoxGeometry(16, 6.5, 0.3), wallMat);
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      // Parete sinistra (X = -7.5)
       const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       leftWall.position.set(-7.5, 3.25, 0);
       roomGroup.add(leftWall);
 
-      // Parete destra (X = 7.5)
       const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       rightWall.position.set(7.5, 3.25, 0);
       roomGroup.add(rightWall);
 
-      // Strisce neon a soffitto / battiscopa
-      const stripBack = new THREE.Mesh(new THREE.BoxGeometry(14.8, 0.08, 0.08), glowCyan);
-      stripBack.position.set(0, 5.8, -4.82);
+      // Neon alto: segmenti separati senza sovrapposizione (niente sfarfallio)
+      // Posteriore cyan (non arriva agli angoli)
+      const stripBack = new THREE.Mesh(new THREE.BoxGeometry(13.2, 0.09, 0.09), glowCyan);
+      stripBack.position.set(0, 5.88, -4.88);
       roomGroup.add(stripBack);
+      // Destra pink
+      const stripRight = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 11.0), glowPink);
+      stripRight.position.set(7.38, 5.88, 0.3);
+      roomGroup.add(stripRight);
+      // Sinistra lime
+      const stripLeftTop = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 11.0), glowLime);
+      stripLeftTop.position.set(-7.38, 5.88, 0.3);
+      roomGroup.add(stripLeftTop);
+      // Angoli come pezzi distinti (stesso y, niente overlap lungo)
+      const stripCornerR = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.09, 0.09), glowPink);
+      stripCornerR.position.set(7.15, 5.88, -4.88);
+      roomGroup.add(stripCornerR);
+      const stripCornerL = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.09, 0.09), glowLime);
+      stripCornerL.position.set(-7.15, 5.88, -4.88);
+      roomGroup.add(stripCornerL);
 
-      const stripLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 12), glowLime);
-      stripLeft.position.set(-7.32, 5.8, 0);
-      roomGroup.add(stripLeft);
-
-      // 2. Finestra panoramica con skyline notturno (parete posteriore sinistra/centro)
-      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.6, 0.2), trimPurpleMat);
-      winFrame.position.set(-2.5, 3.2, -4.82);
+      // Finestra sulla PARETE SINISTRA
+      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.5, 3.8), trimPurpleMat);
+      winFrame.position.set(-7.35, 3.5, -1.0);
       roomGroup.add(winFrame);
-
-      const winGlass = new THREE.Mesh(new THREE.PlaneGeometry(3.9, 2.3), new THREE.MeshBasicMaterial({ color: 0x040714 }));
-      winGlass.position.set(-2.5, 3.2, -4.71);
+      const winGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.5, 2.2),
+        new THREE.MeshBasicMaterial({ color: 0x0c1830 })
+      );
+      winGlass.position.set(-7.24, 3.5, -1.0);
+      winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
+      const winGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.2, 2.0),
+        new THREE.MeshBasicMaterial({ color: 0x1a2850 })
+      );
+      winGlow.position.set(-7.25, 3.5, -1.0);
+      winGlow.rotation.y = Math.PI / 2;
+      roomGroup.add(winGlow);
+      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 3.5), trimPurpleMat);
+      winCrossH.position.set(-7.22, 3.5, -1.0);
+      roomGroup.add(winCrossH);
+      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.06), trimPurpleMat);
+      winCrossV.position.set(-7.22, 3.5, -1.0);
+      roomGroup.add(winCrossV);
 
-      // Grattacieli visibili fuori dalla finestra
-      [
-        { x: -3.7, w: 0.6, h: 1.5, c: glowCyan },
-        { x: -2.9, w: 0.7, h: 1.9, c: glowPink },
-        { x: -2.0, w: 0.5, h: 1.3, c: glowLime },
-        { x: -1.2, w: 0.65, h: 1.7, c: glowCyan }
-      ].forEach(b => {
-        const bMesh = new THREE.Mesh(new THREE.PlaneGeometry(b.w, b.h), new THREE.MeshBasicMaterial({ color: 0x120826 }));
-        bMesh.position.set(b.x, 2.05 + b.h / 2, -4.70);
-        roomGroup.add(bMesh);
-        const bLine = new THREE.Mesh(new THREE.PlaneGeometry(0.04, b.h * 0.8), b.c);
-        bLine.position.set(b.x, 2.05 + b.h / 2, -4.69);
-        roomGroup.add(bLine);
+      // Poster a tema informatico (2-3)
+      function makeTechPoster(title, sub, accentHex) {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 384;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#0e1018';
+        ctx.fillRect(0, 0, 256, 384);
+        ctx.strokeStyle = accentHex;
+        ctx.lineWidth = 8;
+        ctx.strokeRect(10, 10, 236, 364);
+        ctx.fillStyle = accentHex;
+        ctx.font = 'bold 36px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(title, 128, 90);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px "Courier New", monospace';
+        ctx.fillText(sub, 128, 140);
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        for (let y = 180; y < 340; y += 14) {
+          ctx.beginPath();
+          ctx.moveTo(28, y);
+          ctx.lineTo(40 + ((y * 3) % 160), y);
+          ctx.stroke();
+        }
+        ctx.fillStyle = accentHex;
+        ctx.fillRect(48, 355, 160, 5);
+        const tex = new THREE.CanvasTexture(c);
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      const posters = [
+        { title: 'KERNEL', sub: 'v. 0x48', color: '#00f0ff', x: -3.2, y: 3.6, z: -4.78, wall: 'back' },
+        { title: 'ROOT', sub: 'ACCESS', color: '#a8ff00', x: -1.0, y: 3.6, z: -4.78, wall: 'back' },
+        // Parete destra: cornice DIETRO al poster (verso il muro)
+        { title: 'NET', sub: 'PROTOCOL', color: '#ff2a6d', x: 7.28, y: 3.6, z: -3.2, wall: 'right' }
+      ];
+      posters.forEach((p) => {
+        const tex = makeTechPoster(p.title, p.sub, p.color);
+        const poster = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.5, 2.1),
+          new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, depthWrite: true })
+        );
+        poster.position.set(p.x, p.y, p.z);
+        if (p.wall === 'right') poster.rotation.y = -Math.PI / 2;
+        roomGroup.add(poster);
+        // Cornice solo bordo sottile dietro
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(1.58, 2.18, 0.04),
+          new THREE.MeshBasicMaterial({ color: 0x151820 })
+        );
+        frame.position.copy(poster.position);
+        frame.rotation.copy(poster.rotation);
+        if (p.wall === 'back') frame.position.z -= 0.04;      // dietro (verso -Z)
+        else if (p.wall === 'right') frame.position.x += 0.04; // dietro (verso +X, nel muro)
+        roomGroup.add(frame);
       });
 
-      // 3. LETTO SINGOLO / UNA PIAZZA E MEZZA (lato sinistro X = -4.8)
+      // Letto
       const bedGroup = new THREE.Group();
-      // Struttura letto
       const bedBase = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.45, 4.4), darkWoodMat);
       bedBase.position.set(0, 0.225, 0);
       bedGroup.add(bedBase);
-      // Testiera con inserto neon
+
       const headboard = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.35, 0.22), trimPurpleMat);
       headboard.position.set(0, 0.675, -2.15);
       bedGroup.add(headboard);
       const headNeon = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 0.05), glowLime);
       headNeon.position.set(0, 1.15, -2.02);
       bedGroup.add(headNeon);
-      // Materasso e coperta
+
       const mattress = new THREE.Mesh(new THREE.BoxGeometry(2.45, 0.28, 4.2), bedSheetMat);
       mattress.position.set(0, 0.58, 0.05);
       bedGroup.add(mattress);
-      // Piumone piegato
-      const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.52, 0.14, 2.7), new THREE.MeshStandardMaterial({ color: 0x3b1875, roughness: 0.85 }));
+
+      const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.52, 0.14, 2.7), new THREE.MeshStandardMaterial({ color: 0x5528a8, roughness: 0.8 }));
       blanket.position.set(0, 0.72, 0.75);
       bedGroup.add(blanket);
-      // Cuscini
+
       [-0.6, 0.6].forEach(px => {
         const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.55), pillowMat);
         pillow.position.set(px, 0.78, -1.55);
@@ -1326,7 +1728,6 @@
       bedGroup.position.set(-4.8, 0, -2.3);
       roomGroup.add(bedGroup);
 
-      // Comodino accanto al letto con lampada
       const nightstand = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.65, 0.9), darkWoodMat);
       nightstand.position.set(-2.9, 0.325, -4.1);
       roomGroup.add(nightstand);
@@ -1337,110 +1738,160 @@
       lampShade.position.set(-2.9, 1.0, -4.1);
       roomGroup.add(lampShade);
 
-      // 4. SCRIVANIA CON PC FISSO GAMING / SETUP ALGORHYTHM (lato destro X = 2.8)
+      // Scrivania più larga per 2 monitor
       const deskGroup = new THREE.Group();
-      // Piano scrivania
-      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 1.9), darkWoodMat);
+      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.12, 1.9), darkWoodMat);
       deskTop.position.set(0, 1.35, 0);
       deskGroup.add(deskTop);
-      const deskNeonEdge = new THREE.Mesh(new THREE.BoxGeometry(4.42, 0.04, 0.04), glowCyan);
+      const deskNeonEdge = new THREE.Mesh(new THREE.BoxGeometry(5.22, 0.04, 0.04), glowCyan);
       deskNeonEdge.position.set(0, 1.35, 0.96);
       deskGroup.add(deskNeonEdge);
 
-      // Gambe scrivania
-      [[-2.0, -0.8], [2.0, -0.8], [-2.0, 0.8], [2.0, 0.8]].forEach(([lx, lz]) => {
+      [[-2.4, -0.8], [2.4, -0.8], [-2.4, 0.8], [2.4, 0.8]].forEach(([lx, lz]) => {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.35, 0.12), trimPurpleMat);
         leg.position.set(lx, 0.675, lz);
         deskGroup.add(leg);
       });
 
-      // CASE PC FISSO (Torre ATX sulla destra della scrivania)
-      const pcCase = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.05, 1.05), new THREE.MeshStandardMaterial({ color: 0x0a0514, metalness: 0.8, roughness: 0.2 }));
-      pcCase.position.set(1.55, 1.93, -0.1);
+      const pcCase = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.05, 1.05), new THREE.MeshStandardMaterial({ color: 0x130d24, metalness: 0.8, roughness: 0.2 }));
+      pcCase.position.set(2.15, 1.93, -0.1);
       deskGroup.add(pcCase);
-      // Pannello frontale e ventole RGB lime/cyan
       const pcFrontStrip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.92, 0.04), glowCyan);
-      pcFrontStrip.position.set(1.32, 1.93, 0.43);
+      pcFrontStrip.position.set(1.92, 1.93, 0.43);
       deskGroup.add(pcFrontStrip);
       [2.22, 1.93, 1.64].forEach(fy => {
         const fanRing = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.12, 16), glowLime);
-        fanRing.position.set(1.55, fy, 0.43);
+        fanRing.position.set(2.15, fy, 0.43);
         deskGroup.add(fanRing);
       });
-      // Finestra laterale interna PC con GPU illuminata
       const pcGpu = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.55), glowPink);
-      pcGpu.position.set(1.27, 1.85, -0.05);
+      pcGpu.position.set(1.87, 1.85, -0.05);
       deskGroup.add(pcGpu);
 
-      // MONITOR PRINCIPALE CON SCHERMO ALGORHYTHM
-      const monStand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.38, 0.16), trimPurpleMat);
-      monStand.position.set(-0.35, 1.6, -0.45);
-      deskGroup.add(monStand);
-      const monBase = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.04, 0.4), trimPurpleMat);
-      monBase.position.set(-0.35, 1.43, -0.4);
-      deskGroup.add(monBase);
-
-      const monFrame = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.25, 0.08), new THREE.MeshStandardMaterial({ color: 0x090412, roughness: 0.3 }));
-      monFrame.position.set(-0.35, 2.25, -0.38);
-      deskGroup.add(monFrame);
-
-      // Texture schermo monitor PC
+      // MONITOR SCREEN CON PULSANTE CLICCAMI (condiviso)
       const monCanvas = document.createElement('canvas');
       monCanvas.width = 512;
       monCanvas.height = 256;
       const mCtx = monCanvas.getContext('2d');
-      mCtx.fillStyle = '#05020d';
-      mCtx.fillRect(0, 0, 512, 256);
-      mCtx.strokeStyle = '#00f0ff';
-      mCtx.lineWidth = 4;
-      mCtx.strokeRect(10, 10, 492, 236);
-      mCtx.fillStyle = '#a8ff00';
-      mCtx.font = 'bold 28px "Courier New", monospace';
-      mCtx.textAlign = 'center';
-      mCtx.fillText('ALGORHYTHM OS // AFK', 256, 75);
-      mCtx.fillStyle = '#00f0ff';
-      mCtx.font = '18px "Courier New", monospace';
-      mCtx.fillText('AUDIO STREAMING READY', 256, 115);
-      // Barre equalizzatore decorative sul monitor
-      for (let b = 0; b < 14; b++) {
-        const bh = 25 + ((b * 17) % 55);
-        mCtx.fillStyle = b % 2 === 0 ? '#a8ff00' : '#00f0ff';
-        mCtx.fillRect(110 + b * 22, 215 - bh, 14, bh);
-      }
-      const monScreen = new THREE.Mesh(new THREE.PlaneGeometry(2.02, 1.12), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(monCanvas) }));
-      monScreen.position.set(-0.35, 2.25, -0.335);
-      deskGroup.add(monScreen);
 
-      // TASTIERA MECCANICA RGB + TAPPETINO + MOUSE
-      const deskMat = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.015, 0.65), new THREE.MeshStandardMaterial({ color: 0x160a2c }));
+      function drawMonitorCanvas(hovered) {
+        mCtx.fillStyle = '#0b0717';
+        mCtx.fillRect(0, 0, 512, 256);
+        mCtx.strokeStyle = '#00f0ff';
+        mCtx.lineWidth = 4;
+        mCtx.strokeRect(10, 10, 492, 236);
+
+        mCtx.fillStyle = '#a8ff00';
+        mCtx.font = 'bold 26px "Courier New", monospace';
+        mCtx.textAlign = 'center';
+        mCtx.fillText('MIDNIGHT VIBE', 256, 48);
+
+        for (let b = 0; b < 12; b++) {
+          const bh = 15 + ((b * 21) % 45);
+          mCtx.fillStyle = b % 2 === 0 ? '#a8ff00' : '#00f0ff';
+          mCtx.fillRect(110 + b * 24, 115 - bh, 14, bh);
+        }
+
+        const btnLabel = isMonitorZoomed ? 'TORNA ALLA GUIDA' : 'CLICCAMI';
+        mCtx.fillStyle = hovered ? '#a8ff00' : 'rgba(0, 240, 255, 0.2)';
+        mCtx.fillRect(106, 140, 300, 55);
+        mCtx.strokeStyle = '#a8ff00';
+        mCtx.lineWidth = 3;
+        mCtx.strokeRect(106, 140, 300, 55);
+
+        mCtx.fillStyle = hovered ? '#070b19' : '#a8ff00';
+        mCtx.font = 'bold 18px "Courier New", monospace';
+        mCtx.fillText(btnLabel, 256, 174);
+      }
+
+      drawMonitorCanvas(false);
+      const monitorTexture = new THREE.CanvasTexture(monCanvas);
+      const monMat = new THREE.MeshBasicMaterial({ map: monitorTexture });
+
+      // Secondo monitor: terminale informatico (NON cliccabile)
+      const techCanvas = document.createElement('canvas');
+      techCanvas.width = 512;
+      techCanvas.height = 256;
+      const tCtx = techCanvas.getContext('2d');
+      tCtx.fillStyle = '#04080f';
+      tCtx.fillRect(0, 0, 512, 256);
+      tCtx.strokeStyle = '#00f0ff';
+      tCtx.lineWidth = 3;
+      tCtx.strokeRect(6, 6, 500, 244);
+      tCtx.fillStyle = '#00f0ff';
+      tCtx.font = 'bold 16px "Courier New", monospace';
+      tCtx.textAlign = 'left';
+      tCtx.fillText('> ALGORHYTHM OS  //  terminal', 20, 32);
+      tCtx.fillStyle = '#2a6080';
+      tCtx.fillRect(18, 40, 476, 1);
+      const termLines = [
+        '$ ssh root@night-city',
+        'connected.',
+        '$ cat /proc/drive',
+        'status: ACTIVE',
+        'km: streaming...',
+        '$ ./safehouse --mode lounge',
+        'radio: standby',
+        'monitors: 2 online',
+        '$ _'
+      ];
+      tCtx.font = '15px "Courier New", monospace';
+      termLines.forEach((line, i) => {
+        tCtx.fillStyle = line.startsWith('$') ? '#a8ff00' : '#7ec8e3';
+        tCtx.fillText(line, 24, 62 + i * 20);
+      });
+      const techTex = new THREE.CanvasTexture(techCanvas);
+      const techMat = new THREE.MeshBasicMaterial({ map: techTex });
+
+      // Sinistro = CLICCAMI | Destro = terminale
+      const monConfigs = [
+        { x: -1.0, mat: monMat, interactive: true },
+        { x: 0.7, mat: techMat, interactive: false }
+      ];
+      monConfigs.forEach((cfg) => {
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.35, 0.14), trimPurpleMat);
+        stand.position.set(cfg.x, 1.58, -0.4);
+        deskGroup.add(stand);
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.35), trimPurpleMat);
+        base.position.set(cfg.x, 1.43, -0.35);
+        deskGroup.add(base);
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(1.45, 0.95, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0x130d24, roughness: 0.3 })
+        );
+        frame.position.set(cfg.x, 2.15, -0.42);
+        deskGroup.add(frame);
+        const screen = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.35, 0.85),
+          cfg.mat
+        );
+        screen.position.set(cfg.x, 2.15, -0.375);
+        if (cfg.interactive) {
+          screen.userData = { isDriveButton: true };
+          clickables.push(screen);
+        }
+        deskGroup.add(screen);
+      });
+      const monScreen = clickables[clickables.length - 1];
+
+      const deskMat = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.015, 0.65), new THREE.MeshStandardMaterial({ color: 0x26164a }));
       deskMat.position.set(-0.35, 1.418, 0.35);
       deskGroup.add(deskMat);
 
-      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshStandardMaterial({ color: 0x140a24 }));
+      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshStandardMaterial({ color: 0x221538 }));
       keyboard.position.set(-0.55, 1.445, 0.35);
       deskGroup.add(keyboard);
       const kbGlow = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.01, 0.31), glowLime);
       kbGlow.position.set(-0.55, 1.466, 0.35);
       deskGroup.add(kbGlow);
 
-      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshStandardMaterial({ color: 0x140a24 }));
+      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshStandardMaterial({ color: 0x221538 }));
       mouse.position.set(0.22, 1.45, 0.35);
       deskGroup.add(mouse);
       const mouseGlow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.01, 0.18), glowCyan);
       mouseGlow.position.set(0.22, 1.476, 0.35);
       deskGroup.add(mouseGlow);
 
-      // Casse audio da scrivania accanto al monitor
-      [-1.65, 0.92].forEach(sx => {
-        const speaker = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.48, 0.32), trimPurpleMat);
-        speaker.position.set(sx, 1.65, -0.32);
-        deskGroup.add(speaker);
-        const woofer = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glowCyan);
-        woofer.position.set(sx, 1.56, -0.155);
-        deskGroup.add(woofer);
-      });
-
-      // Sedia gaming davanti alla scrivania
       const chairGroup = new THREE.Group();
       const seat = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.14, 0.95), trimPurpleMat);
       seat.position.set(0, 0.78, 0);
@@ -1466,8 +1917,7 @@
       deskGroup.position.set(3.2, 0, -3.6);
       roomGroup.add(deskGroup);
 
-      // 5. DECORAZIONI STANZA: Mensole luminose, Poster, Libreria e Pianta Neon
-      // Mensola a parete sopra la scrivania con libri e cubi luminosi
+      // Mensola sopra la scrivania + casse
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.45), darkWoodMat);
       shelf.position.set(3.2, 3.7, -4.7);
       roomGroup.add(shelf);
@@ -1475,55 +1925,146 @@
       shelfNeon.position.set(3.2, 3.66, -4.48);
       roomGroup.add(shelfNeon);
 
-      // Oggetti decorativi sulla mensola
+      // Casse sulla mensola
+      [2.2, 4.2].forEach(sx => {
+        const speaker = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 0.35), trimPurpleMat);
+        speaker.position.set(sx, 4.02, -4.7);
+        roomGroup.add(speaker);
+        const woofer = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), glowCyan);
+        woofer.position.set(sx, 4.0, -4.5);
+        roomGroup.add(woofer);
+      });
+      // Piccoli oggetti decorativi al centro mensola
       [
-        { x: 2.0, w: 0.22, h: 0.35, c: glowCyan },
-        { x: 2.3, w: 0.22, h: 0.38, c: glowLime },
-        { x: 3.8, w: 0.3, h: 0.3, c: glowPink },
-        { x: 4.3, w: 0.25, h: 0.25, c: glowCyan }
+        { x: 3.0, w: 0.2, h: 0.28, c: glowLime },
+        { x: 3.35, w: 0.22, h: 0.32, c: glowPink }
       ].forEach(obj => {
-        const item = new THREE.Mesh(new THREE.BoxGeometry(obj.w, obj.h, 0.25), obj.c);
+        const item = new THREE.Mesh(new THREE.BoxGeometry(obj.w, obj.h, 0.22), obj.c);
         item.position.set(obj.x, 3.74 + obj.h / 2, -4.7);
         roomGroup.add(item);
       });
 
-      // Poster incorniciato sulla parete sinistra
-      const posterFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.8, 1.3), glowCyan);
-      posterFrame.position.set(-7.32, 3.2, -1.8);
-      roomGroup.add(posterFrame);
-      const posterInner = new THREE.Mesh(new THREE.BoxGeometry(0.09, 1.65, 1.15), new THREE.MeshStandardMaterial({ color: 0x1a0936 }));
-      posterInner.position.set(-7.31, 3.2, -1.8);
-      roomGroup.add(posterInner);
+      // (poster con linee rimosso — parete sinistra più pulita)
 
-      // Pianta decorativa nell'angolo destro
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.5, 12), trimPurpleMat);
       pot.position.set(6.3, 0.25, -4.0);
       roomGroup.add(pot);
-      const plantLeaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0x196b43, emissive: 0x0a3822 }));
+      const plantLeaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0x228b55, emissive: 0x0f4a28 }));
       plantLeaves.position.set(6.3, 0.8, -4.0);
       roomGroup.add(plantLeaves);
 
-      // Luci d'atmosfera della stanza
-      const roomLightCyan = new THREE.PointLight(cyanColor, 2.2, 16);
-      roomLightCyan.position.set(3.0, 3.2, -2.5);
+      // Luci più intense per migliorare la visibilità della stanza
+      const roomLightCyan = new THREE.PointLight(cyanColor, 3.6, 20);
+      roomLightCyan.position.set(3.0, 3.5, -2.5);
       roomGroup.add(roomLightCyan);
 
-      const roomLightPurple = new THREE.PointLight(0x9b4dff, 2.0, 16);
-      roomLightPurple.position.set(-4.0, 3.5, -2.0);
+      const roomLightPurple = new THREE.PointLight(0xa87aff, 3.2, 20);
+      roomLightPurple.position.set(-4.0, 4.0, -2.0);
       roomGroup.add(roomLightPurple);
 
-      const roomLightLime = new THREE.PointLight(limeColor, 1.2, 10);
-      roomLightLime.position.set(0, 1.5, 1.0);
-      roomGroup.add(roomLightLime);
+      const roomLightMain = new THREE.PointLight(0xffffff, 2.4, 16);
+      roomLightMain.position.set(0, 4.5, 0);
+      roomGroup.add(roomLightMain);
+
+      // Luce aggiuntiva vicino alla scrivania per leggibilità del monitor
+      const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
+      deskLight.position.set(-0.3, 3.1, -1.8);
+      roomGroup.add(deskLight);
+
+      window._updateMonitorCanvas = drawMonitorCanvas;
+      window._monitorTexture = monitorTexture;
     }
 
     buildCyberpunkRoom();
 
-    // =========================================================================
-    // SEZIONE C: TRANSIZIONI TRA GUIDA E HOME (STANZA AFK)
-    // =========================================================================
+    // RAYCASTER PER CLICCARE IL MONITOR NELLA STANZA
+    const raycaster = new THREE.Raycaster();
+    const mousePos = new THREE.Vector2();
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isHomeMode) return;
+      mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mousePos, camera);
+      const intersects = raycaster.intersectObjects(clickables);
+      if (intersects.length > 0) {
+        document.body.style.cursor = 'pointer';
+        if (window._updateMonitorCanvas) {
+          window._updateMonitorCanvas(true);
+          window._monitorTexture.needsUpdate = true;
+        }
+      } else {
+        document.body.style.cursor = 'default';
+        if (window._updateMonitorCanvas) {
+          window._updateMonitorCanvas(false);
+          window._monitorTexture.needsUpdate = true;
+        }
+      }
+    });
+
+    // Posizione mondo del monitor (deskGroup + offset locale)
+    const MONITOR_WORLD = { x: 3.05, y: 2.15, z: -3.98 };
+
+    function zoomToMonitor() {
+      isMonitorZoomed = true;
+      if (window._updateMonitorCanvas) {
+        window._updateMonitorCanvas(false);
+        window._monitorTexture.needsUpdate = true;
+      }
+      // Più indietro + FOV più ampio: si vedono entrambi i monitor
+      camera.position.set(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.08, MONITOR_WORLD.z + 2.75);
+      camera.lookAt(MONITOR_WORLD.x, MONITOR_WORLD.y, MONITOR_WORLD.z);
+      camera.fov = 58;
+      camera.updateProjectionMatrix();
+    }
+
+    function exitMonitorZoomToRoom() {
+      isMonitorZoomed = false;
+      document.body.style.cursor = 'default';
+      camera.fov = 65;
+      camera.updateProjectionMatrix();
+      camera.position.set(-0.4, 2.75, 4.4);
+      camera.lookAt(0.2, 1.65, -3.5);
+      if (window._updateMonitorCanvas) {
+        window._updateMonitorCanvas(false);
+        window._monitorTexture.needsUpdate = true;
+      }
+    }
+
+    window.addEventListener('click', (e) => {
+      if (!isHomeMode) return;
+      mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mousePos, camera);
+      const intersects = raycaster.intersectObjects(clickables);
+      const hitMonitor = intersects.length > 0 && intersects[0].object.userData.isDriveButton;
+
+      if (!isMonitorZoomed) {
+        // Vista stanza: click sul monitor → zoom in primo piano
+        if (hitMonitor) {
+          document.body.style.cursor = 'default';
+          zoomToMonitor();
+        }
+      } else {
+        // Vista zoomata sul monitor
+        if (hitMonitor) {
+          // Click sul monitor (pulsante TORNA ALLA GUIDA) → torna in sosta
+          document.body.style.cursor = 'default';
+          camera.fov = 65;
+          camera.updateProjectionMatrix();
+          returnToPitStop();
+        } else {
+          // Click fuori dal monitor → torna alla visuale della stanza
+          exitMonitorZoomToRoom();
+        }
+      }
+    });
+
     function enterHomeRoom() {
       isHomeMode = true;
+      isMonitorZoomed = false;
       restModal.classList.remove('visible');
       stopIndicator.classList.remove('visible');
       telemetryBox.classList.add('hidden');
@@ -1533,27 +2074,79 @@
 
       highwayGroup.visible = false;
       roomGroup.visible = true;
-      scene.fog = new THREE.FogExp2(bgColor, 0.025);
+      scene.fog = new THREE.FogExp2(bgColor, 0.012);
 
-      // Posiziona la camera per inquadrare bene letto, scrivania con PC fisso e decorazioni
+      camera.fov = 65;
+      camera.updateProjectionMatrix();
       camera.position.set(-0.4, 2.75, 4.4);
       camera.lookAt(0.2, 1.65, -3.5);
+
+      if (window._updateMonitorCanvas) {
+        window._updateMonitorCanvas(false);
+        window._monitorTexture.needsUpdate = true;
+      }
     }
 
-    function returnToHighwayDrive() {
+    // Torna in autostrada nella zona di sosta, fermo, mantenendo la distanza percorsa
+    function returnToPitStop() {
       isHomeMode = false;
+      isMonitorZoomed = false;
+      document.body.style.cursor = 'default';
       roomGroup.visible = false;
       highwayGroup.visible = true;
-      scene.fog = new THREE.FogExp2(bgColor, 0.012);
+      scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
 
       homeHudEl.classList.remove('visible');
       hudEl.classList.remove('hidden');
       telemetryBox.classList.remove('hidden');
       speedometerBr.classList.remove('hidden');
 
-      // Reset run autostrada
+      // Mantiene totalKm e nextTargetKm esistenti
+      // Posiziona l'auto DENTRO l'area di parcheggio delimitata
+      const pitX = roadWidth / 2 + 2; // = parkBayX
+      currentKmh = 0;
+      targetX = pitX;
+      carGroup.position.x = pitX;
+      carGroup.rotation.set(0, 0, 0);
+
+      // Mostra il cartello STOP e prepara lo stato di sosta
+      stopSignGroup.position.z = -3.8;
+      stopSignGroup.visible = true;
+      parkBayGroup.visible = true;
+      isAfk = true;
+      parkedSinceTime = performance.now();
+      restModalShown = false;
+      stopIndicator.classList.add('visible');
+      if (document.getElementById('pit-timer')) {
+        document.getElementById('pit-timer').textContent = '5s';
+      }
+
+      camera.fov = 65;
+      camera.updateProjectionMatrix();
+      camera.position.set(pitX * 0.45, 3.2, 7.5);
+      camera.lookAt(pitX * 0.3, 1.2, -10);
+
+      lastFrameTime = performance.now();
+      lastInputTime = performance.now();
+    }
+
+    // Vecchia funzione di reset completo (non più usata dal monitor, tenuta per eventuali altri usi)
+    function returnToHighwayDrive() {
+      isHomeMode = false;
+      isMonitorZoomed = false;
+      document.body.style.cursor = 'default';
+      roomGroup.visible = false;
+      highwayGroup.visible = true;
+      scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
+
+      homeHudEl.classList.remove('visible');
+      hudEl.classList.remove('hidden');
+      telemetryBox.classList.remove('hidden');
+      speedometerBr.classList.remove('hidden');
+
       totalKm = 0;
-      nextTargetKm = 50;
+      nextTargetKm = 100;
+      nextCheckpointKm = 100;
       boardMesh.material.map.dispose();
       boardMesh.material.map = createDynamicBoardTexture(nextTargetKm);
       boardMesh.material.needsUpdate = true;
@@ -1585,6 +2178,9 @@
       audioElement.pause();
       radioDisplay.textContent = '[ RADIO OFF ]';
 
+      initEngineSound();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
       lastFrameTime = performance.now();
       registerActivity();
     });
@@ -1593,11 +2189,6 @@
       enterHomeRoom();
     });
 
-    btnBackToDrive.addEventListener('click', () => {
-      returnToHighwayDrive();
-    });
-
-    // 5. TACHIMETRO ANALOGICO
     const gaugeCanvas = document.getElementById('analog-gauge');
     const gCtx = gaugeCanvas.getContext('2d');
 
@@ -1655,11 +2246,11 @@
       gCtx.fillText(isParked ? 'PARK' : `${Math.round(kmh)}`, cx, cy + 28);
     }
 
-    // 6. STATO E CONTROLLI
     const keys = { left: false, right: false, up: false, down: false };
     let lastInputTime = performance.now();
-    const AFK_LIMIT_MS = 30000;
-    const PARKED_PROMPT_DELAY_MS = 10000;
+    const AFK_LIMIT_MS = 15000;          // 15 secondi di AFK
+    const AFK_WARN_MS = 10000;           // da 10s mostra "PIT-STOP TRA..."
+    const PARKED_PROMPT_DELAY_MS = 5000; // 5 secondi in sosta prima del modal
 
     let isAfk = false;
     let parkedSinceTime = null;
@@ -1673,6 +2264,8 @@
     const restModal = document.getElementById('rest-modal');
     const modalKmValue = document.getElementById('modal-km-value');
     const btnContinue = document.getElementById('btn-continue');
+    const afkWarning = document.getElementById('afk-warning');
+    const afkWarningText = document.getElementById('afk-warning-text');
 
     function closeRestModal() {
       restModal.classList.remove('visible');
@@ -1685,10 +2278,14 @@
     function registerActivity() {
       if (isHomeMode) return;
       lastInputTime = performance.now();
+      if (afkWarning) afkWarning.classList.remove('visible');
       if (isAfk || restModalShown) {
         isAfk = false;
         stopIndicator.classList.remove('visible');
+        parkBayGroup.visible = false;
         closeRestModal();
+      } else if (!isAfk) {
+        parkBayGroup.visible = false;
       }
     }
 
@@ -1713,31 +2310,48 @@
 
     let targetX = 0;
     const maxLaneX = roadWidth / 2 - 1.5;
-    const restAreaTargetX = roadWidth / 2 + 1.8;
+    const restAreaTargetX = roadWidth / 2 + 2; // centro area P delimitata
 
     let currentKmh = 0;
     const maxKmh = 320;
     let totalKm = 0;
     let lastFrameTime = performance.now();
+    // Anti-lag: deltaTime smussato (EMA) per stabilità a 144fps e contro hitch
+    let smoothDelta = 1 / 60;
+    const DELTA_SMOOTH = 0.18;   // quanto peso dare al nuovo frame (0–1)
+    const DELTA_MIN = 0.005;     // ~200 fps max step
+    const DELTA_MAX = 0.028;    // ~36 fps min step (evita tunnel su hitch)
 
-    // 7. LOOP DI ANIMAZIONE A 60 FPS
     function animate(now) {
       requestAnimationFrame(animate);
 
-      const deltaTime = (now - lastFrameTime) / 1000;
+      // Calcolo delta grezzo
+      let rawDelta = (now - lastFrameTime) / 1000;
       lastFrameTime = now;
+      if (rawDelta > 0.1) rawDelta = 0.1; // tab in background: non recuperare secondi
+
+      // EMA: riduce jitter frame-to-frame tipico a 144Hz
+      smoothDelta = smoothDelta + (rawDelta - smoothDelta) * DELTA_SMOOTH;
+      let deltaTime = smoothDelta;
+      if (deltaTime < DELTA_MIN) deltaTime = DELTA_MIN;
+      if (deltaTime > DELTA_MAX) deltaTime = DELTA_MAX;
 
       if (!gameStarted) {
         renderer.render(scene, camera);
         return;
       }
 
-      // Se siamo nella stanza HOME (AFK Lounge), leggero movimento respiratorio della camera
       if (isHomeMode) {
-        const t = now * 0.0005;
-        camera.position.x = -0.4 + Math.sin(t) * 0.25;
-        camera.position.y = 2.75 + Math.cos(t * 0.8) * 0.06;
-        camera.lookAt(0.2, 1.65, -3.5);
+        updateEngineSound(0, true);
+        if (afkWarning) afkWarning.classList.remove('visible');
+        if (!isMonitorZoomed) {
+          // Leggero movimento di camera solo quando non si è zoomati sul monitor
+          const t = now * 0.0005;
+          camera.position.x = -0.4 + Math.sin(t) * 0.25;
+          camera.position.y = 2.75 + Math.cos(t * 0.8) * 0.06;
+          camera.lookAt(0.2, 1.65, -3.5);
+        }
+        // Quando zoomato la camera resta fissa sul monitor (impostata al click)
         renderer.render(scene, camera);
         return;
       }
@@ -1747,22 +2361,41 @@
       }
 
       const idleDuration = now - lastInputTime;
+
+      // Avviso PIT-STOP TRA... + mostra area di sosta
+      if (!isAfk && idleDuration > AFK_WARN_MS && idleDuration < AFK_LIMIT_MS) {
+        const remain = Math.ceil((AFK_LIMIT_MS - idleDuration) / 1000);
+        if (afkWarningText) afkWarningText.textContent = `PIT STOP TRA ${remain}s`;
+        if (afkWarning) afkWarning.classList.add('visible');
+        parkBayGroup.visible = true;
+      } else if (!isAfk) {
+        if (afkWarning) afkWarning.classList.remove('visible');
+        parkBayGroup.visible = false;
+      }
+
       if (idleDuration > AFK_LIMIT_MS && !isAfk) {
         isAfk = true;
         parkedSinceTime = null;
+        if (afkWarning) afkWarning.classList.remove('visible');
+        parkBayGroup.visible = true; // resta visibile durante il pit-stop
         stopIndicator.classList.add('visible');
-        stopSignGroup.position.z = -38;
+        // Cartello STOP più vicino: distanza ridotta quando si entra in sosta
+        stopSignGroup.position.z = -18;
         stopSignGroup.visible = true;
       }
 
       if (isAfk) {
-        targetX += (restAreaTargetX - targetX) * 0.05;
-        const decelRate = 320 / 7;
+        // Sterzata progressiva verso la piazzola (frame-rate independent)
+        const afkSteer = 1 - Math.exp(-4.5 * deltaTime);
+        targetX += (restAreaTargetX - targetX) * afkSteer;
+        // Decelerazione progressiva (anti-lag)
+        const progress = Math.min(1, (320 - currentKmh) / 320);
+        const decelRate = 32 + progress * 42;
         currentKmh = Math.max(0, currentKmh - decelRate * deltaTime);
 
         if (stopSignGroup.visible && stopSignGroup.position.z < -3.8) {
-          const approachSpd = (currentKmh / 320) * 2.32;
-          stopSignGroup.position.z += Math.max(approachSpd, 0.15);
+          const approachSpd = Math.max(0.18, (currentKmh / 320) * 2.6);
+          stopSignGroup.position.z += approachSpd;
           if (stopSignGroup.position.z > -3.8) stopSignGroup.position.z = -3.8;
         }
       } else {
@@ -1810,7 +2443,7 @@
       } else {
         if (!isAfk && currentKmh > 0.05) {
           parkedSinceTime = null;
-          pitTimerEl.textContent = `10s`;
+          pitTimerEl.textContent = `5s`;
           stopIndicator.classList.remove('visible');
         }
       }
@@ -1824,37 +2457,67 @@
       kmDisplay.textContent = `${safeKm.toFixed(2)} KM`;
       drawAnalogGauge(currentKmh, isAfk && displayKmh === 0);
 
-      const trafficWorldSpeed = (80 / 50) * 0.36;
-      const totalSpan = 5 * spacingZ;
+      // Suono motore
+      updateEngineSound(currentKmh, isHomeMode || isAfk);
 
-      for (const t of trafficCars) {
+      // Checkpoint ogni 100 KM
+      if (safeKm >= nextCheckpointKm) {
+        showCheckpoint(nextCheckpointKm);
+        nextCheckpointKm += 100;
+      }
+
+      // Mostra i comandi solo a macchina ferma
+      const controlsHint = document.getElementById('controls-hint');
+      if (controlsHint) {
+        controlsHint.style.opacity = (currentKmh < 0.5) ? '1' : '0';
+      }
+
+      const trafficWorldSpeed = (80 / 50) * 0.36;
+      const totalSpan = 6 * spacingZ;
+      const collRangeZ = 8;
+
+      for (let ti = 0; ti < trafficCars.length; ti++) {
+        const t = trafficCars[ti];
+        const mz = t.mesh.position.z;
+        const halfLen = t.halfLen || 2.3;
+        const halfWidth = t.halfWidth || 1.1;
+
         if (t.isIncoming) {
-          t.mesh.position.z += (currentSpeed + trafficWorldSpeed);
+          t.mesh.position.z = mz + (currentSpeed + trafficWorldSpeed);
           if (t.mesh.position.z > 20) t.mesh.position.z -= totalSpan;
         } else {
-          t.mesh.position.z += (currentSpeed - trafficWorldSpeed);
-          if (t.mesh.position.z > 20) {
-            t.mesh.position.z -= totalSpan;
-          } else if (t.mesh.position.z < -totalSpan - 50) {
-            t.mesh.position.z += totalSpan;
-          }
+          t.mesh.position.z = mz + (currentSpeed - trafficWorldSpeed);
+          if (t.mesh.position.z > 20) t.mesh.position.z -= totalSpan;
+          else if (t.mesh.position.z < -totalSpan - 50) t.mesh.position.z += totalSpan;
         }
 
-        const distZ = Math.abs(carGroup.position.z - t.mesh.position.z);
-        const distX = Math.abs(carGroup.position.x - t.mesh.position.x);
+        const dz = -t.mesh.position.z;
+        if (dz > collRangeZ || dz < -collRangeZ) continue;
 
-        if (distX < 1.3) {
+        const dx = carGroup.position.x - t.mesh.position.x;
+        const absDx = dx < 0 ? -dx : dx;
+        const absDz = dz < 0 ? -dz : dz;
+
+        if (absDx < halfWidth + 1.05 && absDz < halfLen + 2.15) {
           if (t.isIncoming) {
-            if (distZ < 2.5) {
-              currentKmh = Math.max(0, currentKmh - 120);
-              t.mesh.position.z += 5;
-            }
+            t.mesh.position.z -= (halfLen + 2.15 - absDz + 0.3);
+            currentKmh = Math.max(0, currentKmh - 160 * deltaTime);
+          } else if (dz > 0) {
+            const overlap = halfLen + 2.15 - absDz;
+            t.mesh.position.z -= (overlap + 0.2);
+            currentKmh = Math.max(0, currentKmh - (90 + overlap * 35) * deltaTime);
+            if (currentKmh > 35) currentKmh = 35;
           } else {
-            if (t.mesh.position.z < 0 && t.mesh.position.z > -3.5) {
-              currentKmh = Math.min(currentKmh, 80);
-            }
+            t.mesh.position.z += (halfLen + 2.15 - absDz + 0.2);
           }
         }
+      }
+
+      // Scroll tunnel
+      const tunnelLoop = tunnelCount * tunnelSpacing;
+      for (const tn of tunnels) {
+        tn.position.z += currentSpeed;
+        if (tn.position.z > 40) tn.position.z -= tunnelLoop;
       }
 
       const distanceToTarget = nextTargetKm - safeKm;
@@ -1862,7 +2525,7 @@
         const progress = 1 - (distanceToTarget / 2.5);
         gantryGroup.position.z = -140 + (progress * 155);
       } else if (distanceToTarget <= 0) {
-        nextTargetKm += 50;
+        nextTargetKm += 100;
         boardMesh.material.map.dispose();
         boardMesh.material.map = createDynamicBoardTexture(nextTargetKm);
         boardMesh.material.needsUpdate = true;
@@ -1871,24 +2534,28 @@
         gantryGroup.position.z = -500;
       }
 
-      const steerSpeed = 0.14;
-      if (!isAfk && currentSpeed > 0.01) {
+      // Handling frame-rate independent (stabile a 60 e 144 fps)
+      const steerSpeed = 18 * deltaTime; // unità al secondo
+      if (!isAfk && currentSpeed > 0.005) {
         if (keys.left) targetX = Math.max(targetX - steerSpeed, -maxLaneX);
         if (keys.right) targetX = Math.min(targetX + steerSpeed, maxLaneX);
       }
 
       const prevX = carGroup.position.x;
-      carGroup.position.x += (targetX - carGroup.position.x) * 0.1;
+      // Lerp esponenziale: stessa “morbidezza” a qualsiasi FPS
+      const posLerp = 1 - Math.exp(-14 * deltaTime);
+      carGroup.position.x += (targetX - carGroup.position.x) * posLerp;
 
       const deltaX = carGroup.position.x - prevX;
-      carGroup.rotation.z = -deltaX * 0.6;
-      carGroup.rotation.y = -deltaX * 0.35;
+      carGroup.rotation.z = -deltaX * 0.45;
+      carGroup.rotation.y = -deltaX * 0.22;
 
       for (const wheel of wheels) {
         wheel.rotation.x -= currentSpeed * 0.8;
       }
 
-      camera.position.x += (carGroup.position.x * 0.45 - camera.position.x) * 0.06;
+      const camLerp = 1 - Math.exp(-5 * deltaTime);
+      camera.position.x += (carGroup.position.x * 0.45 - camera.position.x) * camLerp;
       horizonSkyline.position.x = camera.position.x * 0.85;
 
       const maxZ = 20;
