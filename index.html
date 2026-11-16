@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Midnight Vibe — Prototype 51 (Complete Edition & Monitor Zoom)</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      background-color: #070b19;
+      font-family: 'Courier New', Courier, monospace;
+      color: #a8ff00;
+    }
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 24px;
+      pointer-events: none;
+      text-shadow: 0 0 8px rgba(168, 255, 0, 0.6);
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+    #hud.hidden {
+      opacity: 0;
+    }
+    #hud h1 {
+      font-size: 1.2rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #hud p {
+      font-size: 0.85rem;
+      color: #c8a2ff;
+      margin-top: 6px;
+    }
+
+    #telemetry {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      text-align: right;
+      pointer-events: none;
+      z-index: 10;
+      background: #0f1428;
+      border: 1px solid rgba(168, 255, 0, 0.4);
+      padding: 12px 18px;
+      border-radius: 6px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+      transition: opacity 0.3s ease;
+    }
+    #telemetry.hidden {
+      opacity: 0;
+    }
+
+    #speedometer-br {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      text-align: center;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+    #speedometer-br.hidden {
+      opacity: 0;
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #a8ff00;
+      text-shadow: 0 0 10px rgba(168, 255, 0, 0.7);
+    }
+
+    #stop-dashboard-indicator {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 10;
+    }
+    #stop-dashboard-indicator.visible {
+      opacity: 1;
+      animation: slowPulse 2.2s infinite ease-in-out;
+    }
+    #stop-dashboard-indicator span {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      color: #ff2a6d;
+      text-shadow: 0 0 8px rgba(255, 42, 109, 0.8);
+    }
+    #pit-timer {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+      margin-top: 2px;
+      letter-spacing: 1px;
+    }
+
+    /* MINI RADIO ALGORHYTHM */
+    #mini-radio {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      background: rgba(12, 18, 36, 0.96);
+      border: 1px solid rgba(0, 240, 255, 0.5);
+      border-radius: 8px;
+      padding: 10px 14px 12px 14px;
+      z-index: 20;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+      width: 250px;
+    }
+    .radio-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .radio-title {
+      font-size: 0.72rem;
+      letter-spacing: 3px;
+      color: #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+      font-weight: bold;
+    }
+    .radio-display {
+      background: #070b19;
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 0.68rem;
+      color: #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .knobs-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 10px;
+    }
+    .round-knob {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #201844 35%, #0f1428 90%);
+      border: 2px solid rgba(0, 240, 255, 0.55);
+      color: #00f0ff;
+      font-family: 'Courier New', monospace;
+      font-size: 0.58rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.2), inset 0 0 6px rgba(0, 240, 255, 0.25);
+      transition: transform 0.25s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      position: relative;
+      user-select: none;
+    }
+    .round-knob::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      width: 2px;
+      height: 6px;
+      background: currentColor;
+      border-radius: 1px;
+    }
+    .round-knob:hover {
+      border-color: #00f0ff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.65);
+    }
+    .round-knob.pwr-knob {
+      border-color: rgba(255, 42, 109, 0.6);
+      color: #ff2a6d;
+      box-shadow: 0 0 8px rgba(255, 42, 109, 0.25);
+    }
+    .round-knob.pwr-knob.active {
+      border-color: #00f0ff;
+      color: #00f0ff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+    }
+    .round-knob.vol-knob {
+      border-color: rgba(168, 255, 0, 0.6);
+      color: #a8ff00;
+      box-shadow: 0 0 8px rgba(168, 255, 0, 0.25);
+    }
+    .round-knob.vol-knob:hover {
+      border-color: #a8ff00;
+      box-shadow: 0 0 14px rgba(168, 255, 0, 0.7);
+    }
+
+    /* OVERLAY START SCREEN */
+    #start-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(7, 11, 25, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      transition: opacity 0.4s ease;
+    }
+    #start-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .start-title {
+      font-size: 2.2rem;
+      letter-spacing: 4px;
+      color: #a8ff00;
+      text-shadow: 0 0 20px rgba(168, 255, 0, 0.7);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .start-subtitle {
+      font-size: 1rem;
+      color: #c8a2ff;
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+    }
+    .btn-start-main {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      padding: 14px 36px;
+      background: rgba(0, 240, 255, 0.15);
+      color: #00f0ff;
+      border: 2px solid #00f0ff;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-start-main:hover {
+      background: #00f0ff;
+      color: #070b19;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
+    }
+
+    /* MODALE PIT STOP */
+    #rest-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      background: rgba(12, 18, 36, 0.95);
+      border: 1px solid #00f0ff;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), inset 0 0 20px rgba(168, 255, 0, 0.08);
+      border-radius: 8px;
+      padding: 28px 34px;
+      text-align: center;
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      min-width: 360px;
+    }
+    #rest-modal.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #rest-modal h2 {
+      font-size: 1.1rem;
+      letter-spacing: 2.5px;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+      margin-bottom: 10px;
+    }
+    #rest-modal p {
+      font-size: 0.85rem;
+      color: #c8a2ff;
+      margin-bottom: 18px;
+      line-height: 1.4;
+    }
+    .modal-km-box {
+      background: rgba(18, 24, 48, 0.85);
+      border: 1px solid rgba(168, 255, 0, 0.4);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 22px;
+    }
+    .modal-km-label {
+      font-size: 0.7rem;
+      color: #c8a2ff;
+      letter-spacing: 1.5px;
+    }
+    .modal-km-value {
+      font-size: 1.9rem;
+      font-weight: bold;
+      color: #a8ff00;
+      text-shadow: 0 0 12px rgba(168, 255, 0, 0.75);
+      margin-top: 4px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+    }
+    .btn-cyber {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease;
+      flex: 1;
+    }
+    .btn-continue {
+      background: rgba(168, 255, 0, 0.15);
+      color: #a8ff00;
+      border: 1px solid #a8ff00;
+      box-shadow: 0 0 12px rgba(168, 255, 0, 0.25);
+    }
+    .btn-continue:hover {
+      background: #a8ff00;
+      color: #070b19;
+    }
+    .btn-home {
+      background: rgba(0, 240, 255, 0.12);
+      color: #00f0ff;
+      border: 1px solid #00f0ff;
+    }
+    .btn-home:hover {
+      background: #00f0ff;
+      color: #070b19;
+    }
+
+    /* HUD SAFEHOUSE */
+    #home-hud {
+      position: fixed;
+      top: 20px;
+      left: 24px;
+      display: flex;
+      flex-direction: column;
+      pointer-events: none;
+      z-index: 25;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #home-hud.visible {
+      opacity: 1;
+    }
+    .home-badge {
+      background: rgba(12, 18, 36, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      border-radius: 6px;
+      padding: 10px 16px;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.2);
+    }
+    .home-badge h2 {
+      font-size: 0.95rem;
+      letter-spacing: 2.5px;
+      color: #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+    }
+
+    @keyframes slowPulse {
+      0%, 100% {
+        opacity: 0.35;
+        transform: translateX(-50%) scale(0.97);
+      }
+      50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.03);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Elemento Audio HTML5 nativo -->
+  <audio id="game-audio" preload="auto"></audio>
+
+  <!-- SCHERMATA START INIZIALE -->
+  <div id="start-screen">
+    <div class="start-title">Midnight Vibe</div>
+    <div class="start-subtitle">ALGORHYTHM // PROTOTYPE 51</div>
+    <button class="btn-start-main" id="btn-start-game">START // ACCENDI MOTORE</button>
+  </div>
+
+  <div id="hud">
+    <h1>MIDNIGHT VIBE // PROTOTYPE 51</h1>
+    <p>[A / D] sterza  |  [W / S] velocità (0 - 320 KM/H)</p>
+  </div>
+
+  <div id="telemetry">
+    <div class="stat-value" id="km-display">0.00 KM</div>
+  </div>
+
+  <div id="speedometer-br">
+    <canvas id="analog-gauge" width="140" height="140"></canvas>
+  </div>
+
+  <!-- MINI RADIO ALGORHYTHM -->
+  <div id="mini-radio">
+    <div class="radio-header">
+      <span class="radio-title">ALGORHYTHM</span>
+    </div>
+    <div class="radio-display" id="radio-display">[ RADIO OFF ]</div>
+    <div class="knobs-row">
+      <button class="round-knob pwr-knob" id="knob-pwr">OFF</button>
+      <button class="round-knob" id="knob-station">FM</button>
+      <button class="round-knob vol-knob" id="knob-vol">70</button>
+    </div>
+  </div>
+
+  <div id="stop-dashboard-indicator">
+    <svg width="64" height="64" viewBox="0 0 100 100">
+      <polygon 
+        points="30,5 70,5 95,30 95,70 70,95 30,95 5,70 5,30" 
+        fill="rgba(255, 42, 109, 0.15)" 
+        stroke="#ff2a6d" 
+        stroke-width="6"
+      />
+      <text 
+        x="50" 
+        y="57" 
+        text-anchor="middle" 
+        fill="#ff2a6d" 
+        font-family="'Courier New', monospace" 
+        font-weight="bold" 
+        font-size="25" 
+        letter-spacing="2"
+      >STOP</text>
+    </svg>
+    <span>PIT STOP IN: <strong id="pit-timer">10s</strong></span>
+  </div>
+
+  <!-- MODALE PIT STOP -->
+  <div id="rest-modal">
+    <h2>PIT STOP // SESSIONE IN PAUSA</h2>
+    <p>Sei fermo nella piazzola di sosta.<br>Cosa desideri fare?</p>
+    <div class="modal-km-box">
+      <div class="modal-km-label">DISTANZA PERCORSA</div>
+      <div class="modal-km-value" id="modal-km-value">0.00 KM</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cyber btn-continue" id="btn-continue">CONTINUA</button>
+      <button class="btn-cyber btn-home" id="btn-home">HOME</button>
+    </div>
+  </div>
+
+  <!-- HUD SAFEHOUSE -->
+  <div id="home-hud">
+    <div class="home-badge">
+      <h2>SAFEHOUSE // AFK LOUNGE</h2>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // 0. CONFIGURAZIONE STAZIONI RADIO E GESTIONE ERRORI AUDIO (AUTO-SKIP)
+    const radioStations = {
+      PulseFM: {
+        name: "PULSE FM",
+        playlist: [
+          { title: "PULSE // Broken Ones", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Broken%20Ones.mp3" },
+          { title: "PULSE // Carry All The Weight", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Carry%20All%20The%20Weight.mp3" },
+          { title: "PULSE // Feel Alright", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Feel%20Alright.mp3" },
+          { title: "PULSE // Good Tonight", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Good%20Tonight.mp3" },
+          { title: "PULSE // High", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/High.mp3" },
+          { title: "PULSE // Only For Show", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Only%20For%20Show.mp3" },
+          { title: "PULSE // Spinning Like A Top", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/Spinning%20Like%20A%20Top.mp3" },
+          { title: "PULSE // That's the Song I Sing", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/PulseFM/songs/That's%20the%20Song%20I%20Sing.mp3" }
+        ]
+      },
+      NeonReggaeton: {
+        name: "NEON REGGAETON",
+        playlist: [
+          { title: "NEON // Algo Que Decirte", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Algo%20Que%20Decirte.mp3" },
+          { title: "NEON // Aun", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Aun.mp3" },
+          { title: "NEON // Bailamos Lento", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Bailamos%20Lento.mp3" },
+          { title: "NEON // Dime que vas a hacer", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Dime%20que%20vas%20a%20hacer.mp3" },
+          { title: "NEON // Escuela Secundaria", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Escuela%20Secundaria.mp3" },
+          { title: "NEON // Linda y Libre", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Linda%20y%20Libre.mp3" },
+          { title: "NEON // Mala de mente", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Mala%20de%20mente.mp3" },
+          { title: "NEON // No Te Hagas El Importante", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/No%20Te%20Hagas%20El%20Importante.mp3" },
+          { title: "NEON // No Vas A Ser Fácil", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/No%20Vas%20A%20Ser%20F%C3%A1cil.mp3" },
+          { title: "NEON // Toma", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Neon%20Reggaeton/songs/Toma.mp3" }
+        ]
+      },
+      HazeWave: {
+        name: "HAZE WAVE",
+        playlist: [
+          { title: "HAZE // Attention and Devotion", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Attention%20and%20Devotion.mp3" },
+          { title: "HAZE // Blackford", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Blackford.mp3" },
+          { title: "HAZE // Cattive Vibes", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Cattive%20Vibes.mp3" },
+          { title: "HAZE // Cielo Che Cambia Tono", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Cielo%20Che%20Cambia%20Tono.mp3" },
+          { title: "HAZE // FUORI", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/FUORI.mp3" },
+          { title: "HAZE // Hey, Hey, Hey", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Hey%2C%20Hey%2C%20Hey.mp3" },
+          { title: "HAZE // Master in Psicologia", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Master%20in%20Psicologia.mp3" },
+          { title: "HAZE // Night Shift", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Night%20Shift.mp3" },
+          { title: "HAZE // Sunday Light", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Sunday%20Light.mp3" },
+          { title: "HAZE // Trust The Process", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/Trust%20The%20Process.mp3" },
+          { title: "HAZE // You Don't Have To", url: "https://raw.githubusercontent.com/JGenius626/Algorhythm/main/Haze%20Wave/songs/You%20Don't%20Have%20To.mp3" }
+        ]
+      }
+    };
+
+    const stationKeys = ['PulseFM', 'NeonReggaeton', 'HazeWave'];
+    let stationIndex = 0;
+    let currentStationKey = stationKeys[stationIndex];
+    let radioOn = false;
+    let shuffledQueue = [];
+    let queueIndex = 0;
+
+    const volumeSteps = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    let volumeStepIndex = 7;
+    let volumeDisplayTimeout = null;
+
+    const audioElement = document.getElementById('game-audio');
+    const radioDisplay = document.getElementById('radio-display');
+    const knobPwr = document.getElementById('knob-pwr');
+    const knobStation = document.getElementById('knob-station');
+    const knobVol = document.getElementById('knob-vol');
+
+    function generateShuffledQueue(stationKey) {
+      const playlist = [...radioStations[stationKey].playlist];
+      for (let i = playlist.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [playlist[i], playlist[j]] = [playlist[j], playlist[i]];
+      }
+      return playlist;
+    }
+
+    function loadAndPlayCurrentTrack() {
+      if (!radioOn) return;
+      if (shuffledQueue.length === 0 || queueIndex >= shuffledQueue.length) {
+        shuffledQueue = generateShuffledQueue(currentStationKey);
+        queueIndex = 0;
+      }
+      const track = shuffledQueue[queueIndex];
+      audioElement.src = track.url;
+      radioDisplay.textContent = track.title;
+      audioElement.volume = volumeSteps[volumeStepIndex] / 100;
+      audioElement.play().catch(() => {});
+    }
+
+    audioElement.addEventListener('ended', () => {
+      queueIndex++;
+      loadAndPlayCurrentTrack();
+    });
+
+    audioElement.addEventListener('error', () => {
+      if (!radioOn) return;
+      radioDisplay.textContent = '[ SKIP: ERRORE TRACCIA ]';
+      setTimeout(() => {
+        queueIndex++;
+        loadAndPlayCurrentTrack();
+      }, 1200);
+    });
+
+    function setStation(stationKey) {
+      currentStationKey = stationKey;
+      stationIndex = stationKeys.indexOf(stationKey);
+      shuffledQueue = generateShuffledQueue(stationKey);
+      queueIndex = 0;
+
+      if (radioOn) {
+        loadAndPlayCurrentTrack();
+      }
+    }
+
+    knobPwr.addEventListener('click', () => {
+      radioOn = !radioOn;
+      knobPwr.classList.toggle('active', radioOn);
+      knobPwr.textContent = radioOn ? 'ON' : 'OFF';
+      knobPwr.style.transform = radioOn ? 'rotate(0deg)' : 'rotate(-45deg)';
+      if (!radioOn) {
+        audioElement.pause();
+        if (volumeDisplayTimeout) clearTimeout(volumeDisplayTimeout);
+        radioDisplay.textContent = '[ RADIO OFF ]';
+      } else {
+        loadAndPlayCurrentTrack();
+      }
+    });
+
+    knobStation.addEventListener('click', () => {
+      stationIndex = (stationIndex + 1) % stationKeys.length;
+      setStation(stationKeys[stationIndex]);
+    });
+
+    knobVol.addEventListener('click', () => {
+      volumeStepIndex = (volumeStepIndex + 1) % volumeSteps.length;
+      const newVol = volumeSteps[volumeStepIndex];
+      audioElement.volume = newVol / 100;
+      knobVol.textContent = newVol;
+
+      if (radioOn) {
+        radioDisplay.textContent = `[ VOLUME: ${newVol}% ]`;
+        if (volumeDisplayTimeout) clearTimeout(volumeDisplayTimeout);
+        volumeDisplayTimeout = setTimeout(() => {
+          if (radioOn && shuffledQueue.length > 0 && shuffledQueue[queueIndex]) {
+            radioDisplay.textContent = shuffledQueue[queueIndex].title;
+          }
+        }, 2000);
+      }
+    });
+
+    let gameStarted = false;
+    let isHomeMode = false;
+    let isZoomedToMonitor = false;
+
+    const startScreen = document.getElementById('start-screen');
+    const btnStartGame = document.getElementById('btn-start-game');
+    const hudEl = document.getElementById('hud');
+    const homeHudEl = document.getElementById('home-hud');
+    const btnHome = document.getElementById('btn-home');
+
+    // SCENA E RENDERER ANTILAG
+    const bgColor = 0x091026;
+    const limeColor = 0xa8ff00;
+    const cyanColor = 0x00f0ff;
+    const purpleAccent = 0x5e23b6;
+    const stopRedColor = 0xff2a6d;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(bgColor);
+    scene.fog = new THREE.FogExp2(bgColor, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(
+      65,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      240
+    );
+    camera.position.set(0, 3.2, 7.5);
+    camera.lookAt(0, 1.2, -10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    document.body.appendChild(renderer.domElement);
+
+    const highwayGroup = new THREE.Group();
+    scene.add(highwayGroup);
+
+    const roomGroup = new THREE.Group();
+    roomGroup.visible = false;
+    scene.add(roomGroup);
+
+    const ambientLight = new THREE.AmbientLight(0x281c4a, 2.4);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(cyanColor, 1.6);
+    dirLight.position.set(10, 25, 15);
+    highwayGroup.add(dirLight);
+
+    // =========================================================================
+    // SEZIONE A: AMBIENTE AUTOSTRADA COMPLETO (GT-500 & DETTAGLI)
+    // =========================================================================
+    const roadWidth = 14;
+
+    const groundGeo = new THREE.PlaneGeometry(500, 300);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x11162d, roughness: 0.8, metalness: 0.2 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, -0.05, -120);
+    highwayGroup.add(ground);
+
+    const roadGeo = new THREE.PlaneGeometry(roadWidth, 260);
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x0b0e1b, roughness: 0.3, metalness: 0.7 });
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    road.rotation.x = -Math.PI / 2;
+    road.position.z = -110;
+    highwayGroup.add(road);
+
+    const restAreaGeo = new THREE.PlaneGeometry(4, 260);
+    const restAreaMat = new THREE.MeshStandardMaterial({ color: 0x0f1325, roughness: 0.35, metalness: 0.6 });
+    const restArea = new THREE.Mesh(restAreaGeo, restAreaMat);
+    restArea.rotation.x = -Math.PI / 2;
+    restArea.position.set(roadWidth / 2 + 2, -0.01, -110);
+    highwayGroup.add(restArea);
+
+    const borderGeo = new THREE.BoxGeometry(0.22, 0.08, 260);
+    const borderMat = new THREE.MeshBasicMaterial({ color: limeColor });
+
+    const leftBorder = new THREE.Mesh(borderGeo, borderMat);
+    leftBorder.position.set(-roadWidth / 2, 0.04, -110);
+    highwayGroup.add(leftBorder);
+
+    const rightBorder = new THREE.Mesh(borderGeo, borderMat);
+    rightBorder.position.set(roadWidth / 2, 0.04, -110);
+    highwayGroup.add(rightBorder);
+
+    const outerBorder = new THREE.Mesh(borderGeo, borderMat);
+    outerBorder.position.set(roadWidth / 2 + 4, 0.04, -110);
+    highwayGroup.add(outerBorder);
+
+    const posts = [];
+    const postGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x241740, roughness: 0.3 });
+    const tipGeo = new THREE.BoxGeometry(0.14, 0.12, 0.14);
+    const tipMat = new THREE.MeshBasicMaterial({ color: limeColor });
+
+    const postCount = 30;
+    const postSpacing = 8;
+    for (let i = 0; i < postCount; i++) {
+      const zPos = -i * postSpacing + 15;
+      const lGroup = new THREE.Group();
+      lGroup.add(new THREE.Mesh(postGeo, postMat));
+      const lTip = new THREE.Mesh(tipGeo, tipMat);
+      lTip.position.y = 0.28;
+      lGroup.add(lTip);
+      lGroup.position.set(-roadWidth / 2 - 0.5, 0.3, zPos);
+      highwayGroup.add(lGroup);
+      posts.push(lGroup);
+
+      const rGroup = new THREE.Group();
+      rGroup.add(new THREE.Mesh(postGeo, postMat));
+      const rTip = new THREE.Mesh(tipGeo, tipMat);
+      rTip.position.y = 0.28;
+      rGroup.add(rTip);
+      rGroup.position.set(roadWidth / 2 + 4.5, 0.3, zPos);
+      highwayGroup.add(rGroup);
+      posts.push(rGroup);
+    }
+
+    const stripes = [];
+    const stripeGeo = new THREE.BoxGeometry(0.2, 0.04, 3.5);
+    const stripeMat = new THREE.MeshBasicMaterial({ color: limeColor });
+    const stripeCount = 18;
+    const stripeSpacing = 14;
+
+    for (let i = 0; i < stripeCount; i++) {
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.position.set(0, 0.02, -i * stripeSpacing + 10);
+      highwayGroup.add(stripe);
+      stripes.push(stripe);
+    }
+
+    const lamps = [];
+    const lampSpacing = 22;
+    const lampCount = 10;
+    const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
+    const cyanBulbMat = new THREE.MeshBasicMaterial({ color: cyanColor });
+
+    for (let i = 0; i < lampCount; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const xPos = side === 1 ? roadWidth / 2 + 8.5 : side * (roadWidth / 2 + 5.5);
+      const zPos = -i * lampSpacing;
+
+      const group = new THREE.Group();
+      const verticalMesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 9, 0.35), poleBaseMat);
+      verticalMesh.position.y = 4.5;
+      group.add(verticalMesh);
+
+      const armMesh = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 0.35), poleBaseMat);
+      armMesh.position.set(-side * 1.2, 8.8, 0);
+      group.add(armMesh);
+
+      const bulbMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.4), cyanBulbMat);
+      bulbMesh.position.set(-side * 1.2, 8.6, 0);
+      group.add(bulbMesh);
+
+      group.position.set(xPos, 0, zPos);
+      highwayGroup.add(group);
+      lamps.push(group);
+    }
+
+    const gantryGroup = new THREE.Group();
+    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
+    const cableMat = new THREE.MeshBasicMaterial({ color: cyanColor });
+
+    const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 0.4), gantryMat);
+    pLeft.position.set(-roadWidth / 2 - 1.5, 4.5, 0);
+    gantryGroup.add(pLeft);
+
+    const pRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 0.4), gantryMat);
+    pRight.position.set(roadWidth / 2 + 1.5, 4.5, 0);
+    gantryGroup.add(pRight);
+
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3.4, 0.4, 0.4), gantryMat);
+    bar.position.set(0, 8.8, 0);
+    gantryGroup.add(bar);
+
+    function createDynamicBoardTexture(kmText) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0f1325';
+      ctx.fillRect(0, 0, 512, 128);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.strokeRect(3, 3, 506, 122);
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = 'bold 36px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`TRAGUARDO // ${kmText} KM`, 256, 64);
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    let nextTargetKm = 50;
+    let boardMat = new THREE.MeshBasicMaterial({ map: createDynamicBoardTexture(nextTargetKm) });
+    const boardMesh = new THREE.Mesh(new THREE.BoxGeometry(roadWidth - 2, 2.2, 0.15), boardMat);
+    boardMesh.position.set(0, 7.3, 0);
+    gantryGroup.add(boardMesh);
+    gantryGroup.position.set(0, 0, -500);
+    highwayGroup.add(gantryGroup);
+
+    const skylineBuildings = [];
+    const buildingMatDark = new THREE.MeshStandardMaterial({ color: 0x16102d, emissive: 0x38196b, emissiveIntensity: 0.4, roughness: 0.6 });
+    const buildingMatMid = new THREE.MeshStandardMaterial({ color: 0x221542, emissive: purpleAccent, emissiveIntensity: 0.3, roughness: 0.5 });
+    
+    for (let i = 0; i < 12; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const xPos = side * (roadWidth / 2 + 18);
+      const zPos = -i * 32 - 10;
+      const bGroup = new THREE.Group();
+      const mainMesh = new THREE.Mesh(new THREE.BoxGeometry(4.5, 24, 4.5), i % 2 === 0 ? buildingMatDark : buildingMatMid);
+      mainMesh.position.y = 12;
+      bGroup.add(mainMesh);
+      bGroup.position.set(xPos, 0, zPos);
+      highwayGroup.add(bGroup);
+      skylineBuildings.push(bGroup);
+    }
+
+    // CARTELLO STOP 3D
+    function createStopSignTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 256, 256);
+      ctx.fillStyle = '#3a1224';
+      ctx.beginPath();
+      ctx.arc(128, 128, 110, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = '#ff2a6d';
+      ctx.stroke();
+      ctx.fillStyle = '#ff2a6d';
+      ctx.font = 'bold 64px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('STOP', 128, 128);
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    const stopSignGroup = new THREE.Group();
+    const poleStop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x38255c }));
+    poleStop.position.set(0, 0.9, -0.06);
+    stopSignGroup.add(poleStop);
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 1.25), new THREE.MeshBasicMaterial({ map: createStopSignTexture(), transparent: true, side: THREE.DoubleSide }));
+    signMesh.position.set(0, 1.95, 0.02);
+    stopSignGroup.add(signMesh);
+    stopSignGroup.position.set(roadWidth / 2 + 4.8, 0, -50);
+    stopSignGroup.visible = false;
+    highwayGroup.add(stopSignGroup);
+
+    // LA MACCHINA DEL GIOCATORE (SHELBY GT-500)
+    const carGroup = new THREE.Group();
+    const silverChassisMat = new THREE.MeshStandardMaterial({ color: 0xa3b2c6, roughness: 0.2, metalness: 0.9 });
+    const trimDarkMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4, metalness: 0.6 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c0716, roughness: 0.1, metalness: 0.95 });
+    const stripeSilverMat = new THREE.MeshBasicMaterial({ color: 0xe8f0fe });
+    const tailRedMat = new THREE.MeshBasicMaterial({ color: stopRedColor });
+
+    const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.52, 4.35), silverChassisMat);
+    lowerBody.position.set(0, 0.52, 0);
+    carGroup.add(lowerBody);
+
+    const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(1.56, 0.42, 1.25), silverChassisMat);
+    roofMesh.position.set(0, 1.04, 0.12);
+    carGroup.add(roofMesh);
+
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.38, 0.65), glassMat);
+    windshield.position.set(0, 0.98, -0.58);
+    windshield.rotation.x = 0.52;
+    carGroup.add(windshield);
+
+    const spoilerWing = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.07, 0.32), trimDarkMat);
+    spoilerWing.position.set(0, 1.03, 2.02);
+    spoilerWing.rotation.x = 0.12;
+    carGroup.add(spoilerWing);
+
+    [-0.22, 0.22].forEach((offsetX) => {
+      const sHood = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 1.62), stripeSilverMat);
+      sHood.position.set(offsetX, 0.89, -1.26);
+      carGroup.add(sHood);
+    });
+
+    [-0.78, 0.78].forEach((hx) => {
+      const headlightSpot = new THREE.SpotLight(0xffffff, 6.0, 45, Math.PI / 3, 0.3, 1);
+      headlightSpot.position.set(hx, 0.62, -2.15);
+      headlightSpot.target.position.set(hx, -0.2, -22);
+      carGroup.add(headlightSpot);
+      carGroup.add(headlightSpot.target);
+    });
+
+    const wheels = [];
+    const tireGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 12);
+    tireGeo.rotateZ(Math.PI / 2);
+    [[-0.96, 0.38, -1.32], [0.96, 0.38, -1.32], [-0.96, 0.38, 1.32], [0.96, 0.38, 1.32]].forEach(([wx, wy, wz]) => {
+      const wGroup = new THREE.Group();
+      wGroup.add(new THREE.Mesh(tireGeo, trimDarkMat));
+      wGroup.position.set(wx, wy, wz);
+      carGroup.add(wGroup);
+      wheels.push(wGroup);
+    });
+
+    const underglow = new THREE.PointLight(limeColor, 2.4, 5);
+    underglow.position.set(0, 0.28, 0);
+    carGroup.add(underglow);
+    highwayGroup.add(carGroup);
+
+    // IL TRAFFICO BIDIREZIONALE
+    const trafficCars = [];
+    const trafficColors = [0xff2a6d, 0x00f0ff, 0xa3b2c6, 0x5e23b6, 0xffb86c];
+    
+    function createTrafficCarModel(isIncoming) {
+      const group = new THREE.Group();
+      const col = trafficColors[Math.floor(Math.random() * trafficColors.length)];
+      const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4 });
+      
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 4.0), bodyMat);
+      body.position.y = 0.45;
+      group.add(body);
+
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 2.0), roofMat);
+      roof.position.set(0, 0.85, -0.1);
+      group.add(roof);
+
+      const lightMat = new THREE.MeshBasicMaterial({ color: isIncoming ? 0xffffff : 0xff2a6d });
+      [-0.65, 0.65].forEach(lx => {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.05), lightMat);
+        l.position.set(lx, 0.45, isIncoming ? 2.02 : -2.02);
+        group.add(l);
+      });
+      return group;
+    }
+
+    const trafficCount = 10;
+    const spacingZ = 100;
+    for (let i = 0; i < trafficCount; i++) {
+      const isIncoming = i < 5;
+      const laneIndex = i % 5;
+      const xLane = isIncoming ? -2.2 : 1.5;
+      const zPos = -50 - (laneIndex * spacingZ);
+
+      const carMesh = createTrafficCarModel(isIncoming);
+      carMesh.position.set(xLane, 0, zPos);
+      highwayGroup.add(carMesh);
+      trafficCars.push({ mesh: carMesh, isIncoming: isIncoming });
+    }
+
+    // =========================================================================
+    // SEZIONE B: STANZA 3D HOME COMPLETA & MONITOR INTERATTIVO CON ZOOM
+    // =========================================================================
+    const clickables = [];
+
+    function buildCyberpunkRoom() {
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x1b1335, roughness: 0.6 });
+      const trimPurpleMat = new THREE.MeshStandardMaterial({ color: 0x2e1a5e, roughness: 0.4 });
+      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x221538, roughness: 0.4 });
+      const bedSheetMat = new THREE.MeshStandardMaterial({ color: 0x42227d, roughness: 0.7 });
+      const pillowMat = new THREE.MeshStandardMaterial({ color: 0xbac7db, roughness: 0.5 });
+      const glowCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
+      const glowLime = new THREE.MeshBasicMaterial({ color: limeColor });
+      const glowPink = new THREE.MeshBasicMaterial({ color: stopRedColor });
+
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), new THREE.MeshStandardMaterial({ color: 0x131026, roughness: 0.45 }));
+      floor.rotation.x = -Math.PI / 2;
+      roomGroup.add(floor);
+
+      const rug = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.03, 3.8), new THREE.MeshStandardMaterial({ color: 0x26164a, roughness: 0.8 }));
+      rug.position.set(0, 0.015, 0.5);
+      roomGroup.add(rug);
+      const rugBorder = new THREE.Mesh(new THREE.BoxGeometry(5.3, 0.02, 3.9), glowCyan);
+      rugBorder.position.set(0, 0.01, 0.5);
+      roomGroup.add(rugBorder);
+
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(16, 6.5, 0.3), wallMat);
+      backWall.position.set(0, 3.25, -5);
+      roomGroup.add(backWall);
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
+      leftWall.position.set(-7.5, 3.25, 0);
+      roomGroup.add(leftWall);
+
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
+      rightWall.position.set(7.5, 3.25, 0);
+      roomGroup.add(rightWall);
+
+      // Letto singolo / piazza e mezza
+      const bedGroup = new THREE.Group();
+      const bedBase = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.45, 4.4), darkWoodMat);
+      bedBase.position.set(0, 0.225, 0);
+      bedGroup.add(bedBase);
+      const headboard = new THREE.Mesh(new THREE.BoxGeometry(2.7, 1.35, 0.22), trimPurpleMat);
+      headboard.position.set(0, 0.675, -2.15);
+      bedGroup.add(headboard);
+      const mattress = new THREE.Mesh(new THREE.BoxGeometry(2.45, 0.28, 4.2), bedSheetMat);
+      mattress.position.set(0, 0.58, 0.05);
+      bedGroup.add(mattress);
+      [-0.6, 0.6].forEach(px => {
+        const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.55), pillowMat);
+        pillow.position.set(px, 0.78, -1.55);
+        pillow.rotation.x = 0.2;
+        bedGroup.add(pillow);
+      });
+      bedGroup.position.set(-4.8, 0, -2.3);
+      roomGroup.add(bedGroup);
+
+      // Comodino con lampada
+      const nightstand = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.65, 0.9), darkWoodMat);
+      nightstand.position.set(-2.9, 0.325, -4.1);
+      roomGroup.add(nightstand);
+      const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.28, 12), glowPink);
+      lampShade.position.set(-2.9, 1.0, -4.1);
+      roomGroup.add(lampShade);
+
+      // Scrivania, PC & Monitor Interattivo
+      const deskGroup = new THREE.Group();
+      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 1.9), darkWoodMat);
+      deskTop.position.set(0, 1.35, 0);
+      deskGroup.add(deskTop);
+
+      const pcCase = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.05, 1.05), new THREE.MeshStandardMaterial({ color: 0x130d24 }));
+      pcCase.position.set(1.55, 1.93, -0.1);
+      deskGroup.add(pcCase);
+
+      const monFrame = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.25, 0.08), new THREE.MeshStandardMaterial({ color: 0x130d24 }));
+      monFrame.position.set(-0.35, 2.25, -0.38);
+      deskGroup.add(monFrame);
+
+      // TEXTURE MONITOR CON TITOLO "MIDNIGHT VIBE" E PULSANTE INTERATTIVO
+      const monCanvas = document.createElement('canvas');
+      monCanvas.width = 512;
+      monCanvas.height = 256;
+      const mCtx = monCanvas.getContext('2d');
+
+      function drawMonitorCanvas(hovered) {
+        mCtx.fillStyle = '#0b0717';
+        mCtx.fillRect(0, 0, 512, 256);
+        mCtx.strokeStyle = '#00f0ff';
+        mCtx.lineWidth = 4;
+        mCtx.strokeRect(10, 10, 492, 236);
+
+        // Titolo richiesto
+        mCtx.fillStyle = '#a8ff00';
+        mCtx.font = 'bold 26px "Courier New", monospace';
+        mCtx.textAlign = 'center';
+        mCtx.fillText('MIDNIGHT VIBE', 256, 45);
+
+        for (let b = 0; b < 12; b++) {
+          const bh = 15 + ((b * 21) % 45);
+          mCtx.fillStyle = b % 2 === 0 ? '#a8ff00' : '#00f0ff';
+          mCtx.fillRect(110 + b * 24, 125 - bh, 14, bh);
+        }
+
+        const btnText = isZoomedToMonitor ? 'TORNA ALLA GUIDA' : 'CLICCAMI';
+        mCtx.fillStyle = hovered ? '#a8ff00' : 'rgba(0, 240, 255, 0.2)';
+        mCtx.fillRect(86, 150, 340, 55);
+        mCtx.strokeStyle = '#00f0ff';
+        mCtx.lineWidth = 3;
+        mCtx.strokeRect(86, 150, 340, 55);
+
+        mCtx.fillStyle = hovered ? '#070b19' : '#00f0ff';
+        mCtx.font = 'bold 18px "Courier New", monospace';
+        mCtx.fillText(btnText, 256, 184);
+      }
+
+      drawMonitorCanvas(false);
+      const monitorTexture = new THREE.CanvasTexture(monCanvas);
+
+      const monScreen = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.02, 1.12),
+        new THREE.MeshBasicMaterial({ map: monitorTexture })
+      );
+      monScreen.position.set(-0.35, 2.25, -0.334);
+      monScreen.userData = { isMonitorScreen: true };
+      deskGroup.add(monScreen);
+      clickables.push(monScreen);
+
+      deskGroup.position.set(3.2, 0, -3.6);
+      roomGroup.add(deskGroup);
+
+      // Decorazioni stanza (pianta, mensole, poster)
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.45), darkWoodMat);
+      shelf.position.set(3.2, 3.7, -4.7);
+      roomGroup.add(shelf);
+
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.5, 12), trimPurpleMat);
+      pot.position.set(6.3, 0.25, -4.0);
+      roomGroup.add(pot);
+      const plantLeaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0x228b55, emissive: 0x0f4a28 }));
+      plantLeaves.position.set(6.3, 0.8, -4.0);
+      roomGroup.add(plantLeaves);
+
+      const roomLightCyan = new THREE.PointLight(cyanColor, 2.8, 18);
+      roomLightCyan.position.set(3.0, 3.5, -2.5);
+      roomGroup.add(roomLightCyan);
+
+      const roomLightPurple = new THREE.PointLight(0xa87aff, 2.5, 18);
+      roomLightPurple.position.set(-4.0, 4.0, -2.0);
+      roomGroup.add(roomLightPurple);
+
+      window._updateMonitorCanvas = drawMonitorCanvas;
+      window._monitorTexture = monitorTexture;
+    }
+
+    buildCyberpunkRoom();
+
+    // RAYCASTER PER ZOOM MONITOR
+    const raycaster = new THREE.Raycaster();
+    const mousePos = new THREE.Vector2();
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isHomeMode) return;
+      mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mousePos, camera);
+      const intersects = raycaster.intersectObjects(clickables);
+      if (intersects.length > 0) {
+        document.body.style.cursor = 'pointer';
+        if (window._updateMonitorCanvas) {
+          window._updateMonitorCanvas(true);
+          window._monitorTexture.needsUpdate = true;
+        }
+      } else {
+        document.body.style.cursor = 'default';
+        if (window._updateMonitorCanvas) {
+          window._updateMonitorCanvas(false);
+          window._monitorTexture.needsUpdate = true;
+        }
+      }
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!isHomeMode) return;
+      mousePos.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mousePos, camera);
+      const intersects = raycaster.intersectObjects(clickables);
+      if (intersects.length > 0 && intersects[0].object.userData.isMonitorScreen) {
+        if (!isZoomedToMonitor) {
+          isZoomedToMonitor = true;
+          if (window._updateMonitorCanvas) {
+            window._updateMonitorCanvas(true);
+            window._monitorTexture.needsUpdate = true;
+          }
+        } else {
+          document.body.style.cursor = 'default';
+          returnToHighwayDrive();
+        }
+      }
+    });
+
+    function enterHomeRoom() {
+      isHomeMode = true;
+      isZoomedToMonitor = false;
+      restModal.classList.remove('visible');
+      stopIndicator.classList.remove('visible');
+      telemetryBox.classList.add('hidden');
+      speedometerBr.classList.add('hidden');
+      hudEl.classList.add('hidden');
+      homeHudEl.classList.add('visible');
+
+      highwayGroup.visible = false;
+      roomGroup.visible = true;
+      scene.fog = new THREE.FogExp2(bgColor, 0.015);
+
+      camera.position.set(-0.4, 2.75, 4.4);
+      camera.lookAt(0.2, 1.65, -3.5);
+    }
+
+    function returnToHighwayDrive() {
+      isHomeMode = false;
+      isZoomedToMonitor = false;
+      document.body.style.cursor = 'default';
+      roomGroup.visible = false;
+      highwayGroup.visible = true;
+      scene.fog = new THREE.FogExp2(bgColor, 0.007);
+
+      homeHudEl.classList.remove('visible');
+      hudEl.classList.remove('hidden');
+      telemetryBox.classList.remove('hidden');
+      speedometerBr.classList.remove('hidden');
+
+      totalKm = 0;
+      nextTargetKm = 50;
+      boardMesh.material.map.dispose();
+      boardMesh.material.map = createDynamicBoardTexture(nextTargetKm);
+      boardMesh.material.needsUpdate = true;
+      gantryGroup.position.z = -500;
+
+      currentKmh = 0;
+      camera.position.set(0, 3.2, 7.5);
+      camera.lookAt(0, 1.2, -10);
+
+      parkedSinceTime = null;
+      restModalShown = false;
+      isAfk = false;
+      lastFrameTime = performance.now();
+    }
+
+    btnStartGame.addEventListener('click', () => {
+      startScreen.classList.add('hidden');
+      gameStarted = true;
+      radioOn = false;
+      knobPwr.classList.remove('active');
+      knobPwr.textContent = 'OFF';
+      knobPwr.style.transform = 'rotate(-45deg)';
+      audioElement.pause();
+      radioDisplay.textContent = '[ RADIO OFF ]';
+      lastFrameTime = performance.now();
+    });
+
+    btnHome.addEventListener('click', () => { enterHomeRoom(); });
+
+    // TACHIMETRO
+    const gaugeCanvas = document.getElementById('analog-gauge');
+    const gCtx = gaugeCanvas.getContext('2d');
+
+    function drawAnalogGauge(kmh, isParked) {
+      gCtx.clearRect(0, 0, 140, 140);
+      const cx = 70, cy = 68, r = 52;
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 2.25);
+      gCtx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
+      gCtx.lineWidth = 6;
+      gCtx.stroke();
+
+      const fraction = Math.min(kmh / 320, 1);
+      const activeAngle = Math.PI * 0.75 + fraction * (Math.PI * 1.5);
+      gCtx.beginPath();
+      gCtx.arc(cx, cy, r, Math.PI * 0.75, activeAngle);
+      gCtx.strokeStyle = '#00f0ff';
+      gCtx.lineWidth = 6;
+      gCtx.stroke();
+
+      gCtx.fillStyle = '#00f0ff';
+      gCtx.font = 'bold 16px "Courier New", monospace';
+      gCtx.textAlign = 'center';
+      gCtx.textBaseline = 'middle';
+      gCtx.fillText(isParked ? 'PARK' : `${Math.round(kmh)}`, cx, cy + 28);
+    }
+
+    const keys = { left: false, right: false, up: false, down: false };
+    let lastInputTime = performance.now();
+    const AFK_LIMIT_MS = 30000;
+    const PARKED_PROMPT_DELAY_MS = 10000;
+    let isAfk = false;
+    let parkedSinceTime = null;
+    let restModalShown = false;
+
+    const kmDisplay = document.getElementById('km-display');
+    const telemetryBox = document.getElementById('telemetry');
+    const speedometerBr = document.getElementById('speedometer-br');
+    const stopIndicator = document.getElementById('stop-dashboard-indicator');
+    const pitTimerEl = document.getElementById('pit-timer');
+    const restModal = document.getElementById('rest-modal');
+    const modalKmValue = document.getElementById('modal-km-value');
+    const btnContinue = document.getElementById('btn-continue');
+
+    btnContinue.addEventListener('click', () => {
+      restModal.classList.remove('visible');
+      restModalShown = false;
+      parkedSinceTime = null;
+      telemetryBox.classList.remove('hidden');
+      speedometerBr.classList.remove('hidden');
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (isHomeMode) return;
+      if (['a', 'A', 'ArrowLeft', 'd', 'D', 'ArrowRight', 'w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'].includes(e.key)) {
+        lastInputTime = performance.now();
+        isAfk = false;
+        stopIndicator.classList.remove('visible');
+      }
+      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+      if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
+    });
+
+    let targetX = 0;
+    const maxLaneX = roadWidth / 2 - 1.5;
+    const restAreaTargetX = roadWidth / 2 + 1.8;
+    let currentKmh = 0;
+    const maxKmh = 320;
+    let totalKm = 0;
+    let lastFrameTime = performance.now();
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const deltaTime = (now - lastFrameTime) / 1000;
+      lastFrameTime = now;
+
+      if (!gameStarted) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      if (isHomeMode) {
+        const targetCamX = isZoomedToMonitor ? 2.85 : -0.4 + Math.sin(now * 0.0005) * 0.25;
+        const targetCamY = isZoomedToMonitor ? 2.22 : 2.75 + Math.cos(now * 0.0004) * 0.06;
+        const targetCamZ = isZoomedToMonitor ? -0.32 : 4.4;
+        const targetLookX = isZoomedToMonitor ? 2.85 : 0.2;
+        const targetLookY = isZoomedToMonitor ? 2.22 : 1.65;
+        const targetLookZ = isZoomedToMonitor ? -0.38 : -3.5;
+
+        camera.position.x += (targetCamX - camera.position.x) * 0.08;
+        camera.position.y += (targetCamY - camera.position.y) * 0.08;
+        camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+        camera.lookAt(new THREE.Vector3(targetLookX, targetLookY, targetLookZ));
+
+        renderer.render(scene, camera);
+        return;
+      }
+
+      const idleDuration = now - lastInputTime;
+      if (idleDuration > AFK_LIMIT_MS && !isAfk) {
+        isAfk = true;
+        parkedSinceTime = null;
+        stopIndicator.classList.add('visible');
+      }
+
+      if (isAfk) {
+        targetX += (restAreaTargetX - targetX) * 0.05;
+        currentKmh = Math.max(0, currentKmh - (320 / 7) * deltaTime);
+      } else {
+        if (keys.up) {
+          let accelRate = currentKmh < 100 ? 29 : (currentKmh < 200 ? 15 : 6);
+          currentKmh = Math.min(maxKmh, currentKmh + accelRate * deltaTime);
+        } else if (keys.down) {
+          currentKmh = Math.max(0, currentKmh - 64 * deltaTime);
+        } else {
+          const friction = Math.abs(carGroup.position.x - restAreaTargetX) < 0.45 ? 45 : 25;
+          currentKmh = Math.max(0, currentKmh - friction * deltaTime);
+        }
+      }
+
+      const isInRestLane = Math.abs(carGroup.position.x - restAreaTargetX) < 0.45;
+      if (currentKmh <= 0.05 && isInRestLane) {
+        currentKmh = 0;
+        if (!stopIndicator.classList.contains('visible')) stopIndicator.classList.add('visible');
+        if (parkedSinceTime === null) {
+          parkedSinceTime = now;
+        } else {
+          const elapsedParked = now - parkedSinceTime;
+          const remainingSec = Math.max(0, Math.ceil((PARKED_PROMPT_DELAY_MS - elapsedParked) / 1000));
+          pitTimerEl.textContent = `${remainingSec}s`;
+
+          if (elapsedParked >= PARKED_PROMPT_DELAY_MS && !restModalShown) {
+            restModalShown = true;
+            modalKmValue.textContent = `${Math.max(0, totalKm).toFixed(2)} KM`;
+            telemetryBox.classList.add('hidden');
+            speedometerBr.classList.add('hidden');
+            restModal.classList.add('visible');
+          }
+        }
+      }
+
+      const currentSpeed = (currentKmh / 50) * 0.36;
+      totalKm += (currentKmh / 3600) * deltaTime * 20;
+
+      kmDisplay.textContent = `${Math.max(0, totalKm).toFixed(2)} KM`;
+      drawAnalogGauge(currentKmh, isAfk && Math.round(currentKmh) === 0);
+
+      // Movimento del traffico
+      const trafficWorldSpeed = (80 / 50) * 0.36;
+      const totalSpan = 5 * spacingZ;
+      for (const t of trafficCars) {
+        if (t.isIncoming) {
+          t.mesh.position.z += (currentSpeed + trafficWorldSpeed);
+          if (t.mesh.position.z > 20) t.mesh.position.z -= totalSpan;
+        } else {
+          t.mesh.position.z += (currentSpeed - trafficWorldSpeed);
+          if (t.mesh.position.z > 20) t.mesh.position.z -= totalSpan;
+          else if (t.mesh.position.z < -totalSpan - 50) t.mesh.position.z += totalSpan;
+        }
+      }
+
+      if (!isAfk && currentSpeed > 0.01) {
+        if (keys.left) targetX = Math.max(targetX - 0.14, -maxLaneX);
+        if (keys.right) targetX = Math.min(targetX + 0.14, maxLaneX);
+      }
+
+      const prevX = carGroup.position.x;
+      carGroup.position.x += (targetX - carGroup.position.x) * 0.1;
+      const deltaX = carGroup.position.x - prevX;
+      carGroup.rotation.z = -deltaX * 0.6;
+
+      for (const wheel of wheels) {
+        wheel.rotation.x -= currentSpeed * 0.8;
+      }
+
+      camera.position.x += (carGroup.position.x * 0.45 - camera.position.x) * 0.06;
+
+      for (const stripe of stripes) {
+        stripe.position.z += currentSpeed;
+        if (stripe.position.z > 20) stripe.position.z -= stripeCount * stripeSpacing;
+      }
+
+      for (const post of posts) {
+        post.position.z += currentSpeed;
+        if (post.position.z > 20) post.position.z -= postCount * postSpacing;
+      }
+
+      for (const lamp of lamps) {
+        lamp.position.z += currentSpeed;
+        if (lamp.position.z > 20) lamp.position.z -= lampCount * lampSpacing;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate(performance.now());
+  </script>
+</body>
+</html>
