@@ -73,8 +73,18 @@ let gameStarted = false;
       }
     }
 
+    /** Browser bloccano AudioContext finché non c'è interazione utente */
+    function resumeAudioContext() {
+      if (!audioCtx) {
+        initEngineSound();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+
     function updateEngineSound(kmh, muted) {
-      if (!engineStarted || !engineGain) return;
+      if (!engineStarted || !engineGain || !audioCtx) return;
       if (muted || kmh < 1) {
         engineGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.12);
         return;
@@ -88,6 +98,44 @@ let gameStarted = false;
       engineFilter.frequency.setTargetAtTime(220 + t * 480, audioCtx.currentTime, 0.08);
       engineGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.06);
     }
+
+    // Feedback collisione: click breve via WebAudio
+    function playCollisionTick() {
+      if (!audioCtx || audioCtx.state !== 'running') return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 90;
+        g.gain.value = 0.04;
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        const t0 = audioCtx.currentTime;
+        g.gain.setTargetAtTime(0, t0, 0.04);
+        osc.start(t0);
+        osc.stop(t0 + 0.12);
+      } catch (_) { /* ignore */ }
+    }
+
+    // Record personale
+    const BEST_KM_KEY = 'midnightVibe_bestKm';
+    function loadBestKm() {
+      const v = parseFloat(localStorage.getItem(BEST_KM_KEY) || '0');
+      return Number.isFinite(v) ? v : 0;
+    }
+    function saveBestKm(km) {
+      const prev = loadBestKm();
+      if (km > prev) {
+        localStorage.setItem(BEST_KM_KEY, String(km));
+        return true;
+      }
+      return false;
+    }
+    let bestKm = loadBestKm();
+
+    // Camera shake da collisione
+    let shakeTime = 0;
+    let shakeAmp = 0;
 
     let nextCheckpointKm = 100;
     const checkpointToast = document.getElementById('checkpoint-toast');
@@ -318,6 +366,10 @@ let gameStarted = false;
     const lampCount = 10;
     const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
     const cyanBulbMat = new THREE.MeshBasicMaterial({ color: cyanColor });
+    // Geometrie lampione condivise
+    const lampVerticalGeo = new THREE.BoxGeometry(0.35, 9, 0.35);
+    const lampArmGeo = new THREE.BoxGeometry(2.8, 0.25, 0.35);
+    const lampBulbGeo = new THREE.BoxGeometry(0.8, 0.15, 0.4);
 
     for (let i = 0; i < lampCount; i++) {
       const side = i % 2 === 0 ? -1 : 1;
@@ -325,18 +377,15 @@ let gameStarted = false;
       const zPos = -i * lampSpacing;
 
       const group = new THREE.Group();
-      const verticalGeo = new THREE.BoxGeometry(0.35, 9, 0.35);
-      const verticalMesh = new THREE.Mesh(verticalGeo, poleBaseMat);
+      const verticalMesh = new THREE.Mesh(lampVerticalGeo, poleBaseMat);
       verticalMesh.position.y = 4.5;
       group.add(verticalMesh);
 
-      const armGeo = new THREE.BoxGeometry(2.8, 0.25, 0.35);
-      const armMesh = new THREE.Mesh(armGeo, poleBaseMat);
+      const armMesh = new THREE.Mesh(lampArmGeo, poleBaseMat);
       armMesh.position.set(-side * 1.2, 8.8, 0);
       group.add(armMesh);
 
-      const bulbGeo = new THREE.BoxGeometry(0.8, 0.15, 0.4);
-      const bulbMesh = new THREE.Mesh(bulbGeo, cyanBulbMat);
+      const bulbMesh = new THREE.Mesh(lampBulbGeo, cyanBulbMat);
       bulbMesh.position.set(-side * 1.2, 8.6, 0);
       group.add(bulbMesh);
 
@@ -369,26 +418,30 @@ let gameStarted = false;
     cableR.position.set(3, 8.2, 0);
     gantryGroup.add(cableR);
 
-    function createDynamicBoardTexture(kmText) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0f1325';
-      ctx.fillRect(0, 0, 512, 128);
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = '#00f0ff';
-      ctx.strokeRect(3, 3, 506, 122);
-      ctx.fillStyle = '#00f0ff';
-      ctx.font = 'bold 36px "Courier New", monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`CHECKPOINT // ${kmText} KM`, 256, 64);
-      return new THREE.CanvasTexture(canvas);
+    // Canvas + texture del cartello checkpoint: riusati, mai ricreati a runtime
+    const boardCanvas = document.createElement('canvas');
+    boardCanvas.width = 512;
+    boardCanvas.height = 128;
+    const boardCtx = boardCanvas.getContext('2d');
+    const boardTexture = new THREE.CanvasTexture(boardCanvas);
+
+    function updateBoardTexture(kmText) {
+      boardCtx.fillStyle = '#0f1325';
+      boardCtx.fillRect(0, 0, 512, 128);
+      boardCtx.lineWidth = 6;
+      boardCtx.strokeStyle = '#00f0ff';
+      boardCtx.strokeRect(3, 3, 506, 122);
+      boardCtx.fillStyle = '#00f0ff';
+      boardCtx.font = 'bold 36px "Courier New", monospace';
+      boardCtx.textAlign = 'center';
+      boardCtx.textBaseline = 'middle';
+      boardCtx.fillText(`CHECKPOINT // ${kmText} KM`, 256, 64);
+      boardTexture.needsUpdate = true;
     }
 
     let nextTargetKm = 100;
-    let boardMat = new THREE.MeshBasicMaterial({ map: createDynamicBoardTexture(nextTargetKm) });
+    updateBoardTexture(nextTargetKm);
+    const boardMat = new THREE.MeshBasicMaterial({ map: boardTexture });
     const boardMesh = new THREE.Mesh(new THREE.BoxGeometry(roadWidth - 2, 2.2, 0.15), boardMat);
     boardMesh.position.set(0, 7.3, 0);
     gantryGroup.add(boardMesh);
@@ -739,24 +792,46 @@ let gameStarted = false;
 
     const trafficCars = [];
     const trafficColors = [0xff2a6d, 0x00f0ff, 0xa3b2c6, 0x5e23b6, 0xffb86c];
-    
-    function createTrafficCarModel(isIncoming) {
+
+    // --- Pool materiali/geometrie traffico (condivisi, zero alloc a runtime) ---
+    const trafficBodyMats = trafficColors.map(
+      (col) => new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 })
+    );
+    const trafficBikeBodyMats = trafficColors.map(
+      (col) => new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.85 })
+    );
+    const trafficRoofMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4 });
+    const trafficDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a1228, roughness: 0.4, metalness: 0.6 });
+    const trafficWheelMat = new THREE.MeshBasicMaterial({ color: 0x111118 });
+    const trafficLightWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const trafficLightRedMat = new THREE.MeshBasicMaterial({ color: 0xff2a6d });
+
+    const carBodyGeo = new THREE.BoxGeometry(1.8, 0.5, 4.0);
+    const carRoofGeo = new THREE.BoxGeometry(1.4, 0.4, 2.0);
+    const carLightGeo = new THREE.BoxGeometry(0.3, 0.12, 0.05);
+
+    const bikeBodyGeo = new THREE.BoxGeometry(0.55, 0.35, 1.9);
+    const bikeSeatGeo = new THREE.BoxGeometry(0.4, 0.18, 0.7);
+    const bikeHandleGeo = new THREE.BoxGeometry(0.7, 0.08, 0.08);
+    const bikeLightGeo = new THREE.BoxGeometry(0.2, 0.15, 0.08);
+    const bikeWheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10);
+    bikeWheelGeo.rotateZ(Math.PI / 2);
+
+    function createTrafficCarModel(isIncoming, colorIndex) {
       const group = new THREE.Group();
-      const col = trafficColors[Math.floor(Math.random() * trafficColors.length)];
-      const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 });
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4 });
-      
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 4.0), bodyMat);
+      const bodyMat = trafficBodyMats[colorIndex % trafficBodyMats.length];
+
+      const body = new THREE.Mesh(carBodyGeo, bodyMat);
       body.position.y = 0.45;
       group.add(body);
 
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 2.0), roofMat);
+      const roof = new THREE.Mesh(carRoofGeo, trafficRoofMat);
       roof.position.set(0, 0.85, -0.1);
       group.add(roof);
 
-      const lightMat = new THREE.MeshBasicMaterial({ color: isIncoming ? 0xffffff : 0xff2a6d });
-      [-0.65, 0.65].forEach(lx => {
-        const l = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.05), lightMat);
+      const lightMat = isIncoming ? trafficLightWhiteMat : trafficLightRedMat;
+      [-0.65, 0.65].forEach((lx) => {
+        const l = new THREE.Mesh(carLightGeo, lightMat);
         l.position.set(lx, 0.45, isIncoming ? 2.02 : -2.02);
         group.add(l);
       });
@@ -764,32 +839,27 @@ let gameStarted = false;
       return group;
     }
 
-    function createTrafficBikeModel(isIncoming) {
+    function createTrafficBikeModel(isIncoming, colorIndex) {
       const group = new THREE.Group();
-      const col = trafficColors[Math.floor(Math.random() * trafficColors.length)];
-      const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.85 });
-      const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1228, roughness: 0.4, metalness: 0.6 });
+      const bodyMat = trafficBikeBodyMats[colorIndex % trafficBikeBodyMats.length];
 
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 1.9), bodyMat);
+      const body = new THREE.Mesh(bikeBodyGeo, bodyMat);
       body.position.y = 0.55;
       group.add(body);
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.18, 0.7), darkMat);
+      const seat = new THREE.Mesh(bikeSeatGeo, trafficDarkMat);
       seat.position.set(0, 0.72, 0.15);
       group.add(seat);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), darkMat);
+      const handle = new THREE.Mesh(bikeHandleGeo, trafficDarkMat);
       handle.position.set(0, 0.85, -0.7);
       group.add(handle);
-      const wheelGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10);
-      wheelGeo.rotateZ(Math.PI / 2);
-      const wMat = new THREE.MeshBasicMaterial({ color: 0x111118 });
-      const wF = new THREE.Mesh(wheelGeo, wMat);
+      const wF = new THREE.Mesh(bikeWheelGeo, trafficWheelMat);
       wF.position.set(0, 0.28, -0.75);
       group.add(wF);
-      const wR = new THREE.Mesh(wheelGeo, wMat);
+      const wR = new THREE.Mesh(bikeWheelGeo, trafficWheelMat);
       wR.position.set(0, 0.28, 0.75);
       group.add(wR);
-      const lightMat = new THREE.MeshBasicMaterial({ color: isIncoming ? 0xffffff : 0xff2a6d });
-      const light = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.08), lightMat);
+      const lightMat = isIncoming ? trafficLightWhiteMat : trafficLightRedMat;
+      const light = new THREE.Mesh(bikeLightGeo, lightMat);
       light.position.set(0, 0.55, isIncoming ? 0.98 : -0.98);
       group.add(light);
 
@@ -804,8 +874,11 @@ let gameStarted = false;
       const xLane = isIncoming ? -2.2 : 1.5;
       const zPos = -40 - (laneIndex * spacingZ);
       const isBike = (i % 4 === 1);
+      const colorIndex = i % trafficColors.length;
 
-      const mesh = isBike ? createTrafficBikeModel(isIncoming) : createTrafficCarModel(isIncoming);
+      const mesh = isBike
+        ? createTrafficBikeModel(isIncoming, colorIndex)
+        : createTrafficCarModel(isIncoming, colorIndex);
       mesh.position.set(xLane, 0, zPos);
       highwayGroup.add(mesh);
 
@@ -827,26 +900,31 @@ let gameStarted = false;
     const tunnelNeonMat = new THREE.MeshBasicMaterial({ color: cyanColor });
     const tunnelCount = 3;
     const tunnelSpacing = 280;
+    // Geometrie tunnel condivise
+    const tunnelWallGeo = new THREE.BoxGeometry(1.2, 7, 28);
+    const tunnelRoofGeo = new THREE.BoxGeometry(roadWidth + 3, 1.0, 28);
+    const tunnelRingGeo = new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25);
+    const tunnelLightGeo = new THREE.BoxGeometry(0.6, 0.12, 0.6);
 
     for (let i = 0; i < tunnelCount; i++) {
       const tGroup = new THREE.Group();
-      const wallL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7, 28), tunnelMat);
+      const wallL = new THREE.Mesh(tunnelWallGeo, tunnelMat);
       wallL.position.set(-roadWidth / 2 - 0.8, 3.5, 0);
       tGroup.add(wallL);
-      const wallR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 7, 28), tunnelMat);
+      const wallR = new THREE.Mesh(tunnelWallGeo, tunnelMat);
       wallR.position.set(roadWidth / 2 + 0.8, 3.5, 0);
       tGroup.add(wallR);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3, 1.0, 28), tunnelMat);
+      const roof = new THREE.Mesh(tunnelRoofGeo, tunnelMat);
       roof.position.set(0, 7.2, 0);
       tGroup.add(roof);
-      const ring1 = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25), tunnelNeonMat);
+      const ring1 = new THREE.Mesh(tunnelRingGeo, tunnelNeonMat);
       ring1.position.set(0, 7.5, 14);
       tGroup.add(ring1);
-      const ring2 = new THREE.Mesh(new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25), tunnelNeonMat);
+      const ring2 = new THREE.Mesh(tunnelRingGeo, tunnelNeonMat);
       ring2.position.set(0, 7.5, -14);
       tGroup.add(ring2);
       for (let li = 0; li < 5; li++) {
-        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.6), tunnelNeonMat);
+        const tl = new THREE.Mesh(tunnelLightGeo, tunnelNeonMat);
         tl.position.set(0, 6.6, -10 + li * 5);
         tGroup.add(tl);
       }
@@ -1751,13 +1829,27 @@ let gameStarted = false;
       lastInputTime = performance.now();
     }
 
+    // Aggiorna label BEST sulla start screen
+    const startBestEl = document.getElementById('start-best');
+    function refreshBestLabels(isNew = false) {
+      bestKm = loadBestKm();
+      if (startBestEl) {
+        startBestEl.textContent = `BEST — ${bestKm.toFixed(2)} KM`;
+      }
+      const modalBest = document.getElementById('modal-best-value');
+      if (modalBest) {
+        modalBest.textContent = `${bestKm.toFixed(2)} KM`;
+        modalBest.classList.toggle('is-new', !!isNew);
+      }
+    }
+    refreshBestLabels();
+
     btnStartGame.addEventListener('click', () => {
       startScreen.classList.add('hidden');
       gameStarted = true;
       resetRadioUI();
 
-      initEngineSound();
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      resumeAudioContext();
 
       lastFrameTime = performance.now();
       registerActivity();
@@ -1881,6 +1973,7 @@ let gameStarted = false;
     btnContinue.addEventListener('click', () => { registerActivity(); });
 
     window.addEventListener('keydown', (e) => {
+      resumeAudioContext();
       if (isHomeMode) return;
       const validKeys = ['a', 'A', 'ArrowLeft', 'd', 'D', 'ArrowRight', 'w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'];
       if (validKeys.includes(e.key)) registerActivity();
@@ -2033,8 +2126,10 @@ let gameStarted = false;
           }
         }
 
+        // frameScale: i valori originali erano "unità per frame" a ~60 Hz
+        const frameScaleEarly = deltaTime * 60;
         if (stopSignGroup.visible) {
-          const moveSpd = Math.max(0.05, (currentKmh / 50) * 0.36);
+          const moveSpd = Math.max(0.05, (currentKmh / 50) * 0.36) * frameScaleEarly;
           stopSignGroup.position.z += moveSpd;
           if (stopSignGroup.position.z > 15) stopSignGroup.visible = false;
         }
@@ -2042,6 +2137,13 @@ let gameStarted = false;
 
       const isInRestLane = Math.abs(carGroup.position.x - restAreaTargetX) < 0.45;
       const stopSignAtRest = stopSignGroup.visible && Math.abs(stopSignGroup.position.z - (-3.8)) < 0.05;
+
+      // Hint corsia di sosta
+      const pitLaneHint = document.getElementById('pit-lane-hint');
+      if (pitLaneHint) {
+        const showPitHint = isInRestLane && !restModalShown && !isHomeMode && currentKmh < 80;
+        pitLaneHint.classList.toggle('visible', showPitHint);
+      }
 
       if (currentKmh <= 0.05 && isInRestLane && stopSignAtRest) {
         currentKmh = 0;
@@ -2056,7 +2158,10 @@ let gameStarted = false;
 
           if (elapsedParked >= PARKED_PROMPT_DELAY_MS && !restModalShown) {
             restModalShown = true;
-            modalKmValue.textContent = `${Math.max(0, totalKm).toFixed(2)} KM`;
+            const runKm = Math.max(0, totalKm);
+            modalKmValue.textContent = `${runKm.toFixed(2)} KM`;
+            const isNewBest = saveBestKm(runKm);
+            refreshBestLabels(isNewBest);
             telemetryBox.classList.add('hidden');
             speedometerBr.classList.add('hidden');
             restModal.classList.add('visible');
@@ -2070,7 +2175,9 @@ let gameStarted = false;
         }
       }
 
-      const currentSpeed = (currentKmh / 50) * 0.36;
+      // Velocità di scorrimento mondo: indipendente dal framerate (baseline 60 Hz)
+      const frameScale = deltaTime * 60;
+      const currentSpeed = (currentKmh / 50) * 0.36 * frameScale;
       const kmPerSecond = currentKmh / 3600;
       totalKm += kmPerSecond * deltaTime * 20;
 
@@ -2091,7 +2198,7 @@ let gameStarted = false;
         controlsHint.style.opacity = (currentKmh < 0.5) ? '1' : '0';
       }
 
-      const trafficWorldSpeed = (80 / 50) * 0.36;
+      const trafficWorldSpeed = (80 / 50) * 0.36 * frameScale;
       const totalSpan = 6 * spacingZ;
       const collRangeZ = 8;
 
@@ -2118,6 +2225,12 @@ let gameStarted = false;
         const absDz = dz < 0 ? -dz : dz;
 
         if (absDx < halfWidth + 1.05 && absDz < halfLen + 2.15) {
+          // Feedback collisione
+          if (shakeTime <= 0) {
+            shakeTime = 0.22;
+            shakeAmp = 0.18;
+            playCollisionTick();
+          }
           if (t.isIncoming) {
             t.mesh.position.z -= (halfLen + 2.15 - absDz + 0.3);
             currentKmh = Math.max(0, currentKmh - 160 * deltaTime);
@@ -2144,9 +2257,7 @@ let gameStarted = false;
         gantryGroup.position.z = -140 + (progress * 155);
       } else if (distanceToTarget <= 0) {
         nextTargetKm += 100;
-        boardMesh.material.map.dispose();
-        boardMesh.material.map = createDynamicBoardTexture(nextTargetKm);
-        boardMesh.material.needsUpdate = true;
+        updateBoardTexture(nextTargetKm);
         gantryGroup.position.z = -500;
       } else {
         gantryGroup.position.z = -500;
@@ -2171,7 +2282,19 @@ let gameStarted = false;
       }
 
       const camLerp = 1 - Math.exp(-5 * deltaTime);
-      camera.position.x += (carGroup.position.x * 0.45 - camera.position.x) * camLerp;
+      const camTargetX = carGroup.position.x * 0.45;
+      camera.position.x += (camTargetX - camera.position.x) * camLerp;
+
+      // Shake collisione (decadimento temporale, indipendente dal FPS)
+      if (shakeTime > 0) {
+        shakeTime = Math.max(0, shakeTime - deltaTime);
+        const falloff = shakeTime / 0.22;
+        camera.position.x += (Math.random() - 0.5) * shakeAmp * falloff;
+        camera.position.y = 3.2 + (Math.random() - 0.5) * shakeAmp * falloff * 0.6;
+      } else {
+        camera.position.y += (3.2 - camera.position.y) * Math.min(1, 8 * deltaTime);
+      }
+
       horizonSkyline.position.x = camera.position.x * 0.85;
 
       const maxZ = 20;
