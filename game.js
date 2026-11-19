@@ -109,6 +109,7 @@ let gameStarted = false;
     const hudEl = document.getElementById('hud');
     const homeHudEl = document.getElementById('home-hud');
     const btnHome = document.getElementById('btn-home');
+    const miniRadioEl = document.getElementById('mini-radio');
 
     const bgColor = 0x070b1a;
     const limeColor = 0xa8ff00;
