@@ -9,6 +9,8 @@ const setStation = Radio.setStation;
 const cycleVolume = Radio.cycleVolume;
 const updateAllRadioDisplays = Radio.updateAllRadioDisplays;
 const resetRadioUI = Radio.resetRadioUI;
+const pauseRadioAudio = Radio.pauseRadioAudio;
+const resumeRadioAudioIfOn = Radio.resumeRadioAudioIfOn;
 
 let gameStarted = false;
     let isHomeMode = false;
@@ -1581,7 +1583,59 @@ let gameStarted = false;
     const raycaster = new THREE.Raycaster();
     const mousePos = new THREE.Vector2();
 
+    function playUiClick(freq = 420, dur = 0.06, vol = 0.035) {
+      resumeAudioContext();
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        g.gain.value = vol;
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        const t0 = audioCtx.currentTime;
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.start(t0);
+        osc.stop(t0 + dur);
+      } catch (_) { /* ignore */ }
+    }
+
+    let fanOsc = null;
+    let fanGain = null;
+    let fanFilter = null;
+    function setPcFanHum(on) {
+      resumeAudioContext();
+      if (!audioCtx) return;
+      if (on) {
+        if (!fanOsc) {
+          try {
+            fanOsc = audioCtx.createOscillator();
+            fanOsc.type = 'sawtooth';
+            fanOsc.frequency.value = 58;
+            fanFilter = audioCtx.createBiquadFilter();
+            fanFilter.type = 'lowpass';
+            fanFilter.frequency.value = 180;
+            fanFilter.Q.value = 0.5;
+            fanGain = audioCtx.createGain();
+            fanGain.gain.value = 0;
+            fanOsc.connect(fanFilter);
+            fanFilter.connect(fanGain);
+            fanGain.connect(audioCtx.destination);
+            fanOsc.start();
+          } catch (_) {
+            fanOsc = null;
+            return;
+          }
+        }
+        if (fanGain) fanGain.gain.setTargetAtTime(0.012, audioCtx.currentTime, 0.25);
+      } else if (fanGain) {
+        fanGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+      }
+    }
+
     function setRoomNeons(on) {
+      const changed = roomNeonOn !== on;
       roomNeonOn = on;
       for (const strip of roomLedStrips) {
         strip.material = on ? strip.userData.onMat : (strip.userData.offMat || matLedOff);
@@ -1589,6 +1643,24 @@ let gameStarted = false;
       if (switchBtnMesh) {
         switchBtnMesh.rotation.z = on ? 0.14 : -0.14;
       }
+      if (changed) playUiClick(on ? 520 : 280, 0.05, 0.03);
+    }
+
+    // Look yaw in safehouse (0 = verso desk, negativo = finestra a sinistra)
+    let homeLookYaw = 0;
+    const HOME_YAW_MIN = -1.05;
+    const HOME_YAW_MAX = 0.35;
+    const HOME_CAM_POS = new THREE.Vector3(0.0, 2.75, 4.4);
+    const HOME_LOOK_BASE = new THREE.Vector3(0.5, 1.65, -3.5);
+
+    function applyHomeCameraLook() {
+      camera.position.copy(HOME_CAM_POS);
+      const look = HOME_LOOK_BASE.clone().sub(HOME_CAM_POS);
+      const cos = Math.cos(homeLookYaw);
+      const sin = Math.sin(homeLookYaw);
+      const lx = look.x * cos - look.z * sin;
+      const lz = look.x * sin + look.z * cos;
+      camera.lookAt(HOME_CAM_POS.x + lx, HOME_LOOK_BASE.y, HOME_CAM_POS.z + lz);
     }
 
     window.addEventListener('mousemove', (e) => {
@@ -1640,6 +1712,8 @@ let gameStarted = false;
         window._updateAlgoMonitorCanvas();
         window._algoTexture.needsUpdate = true;
       }
+      playUiClick(180, 0.08, 0.025);
+      setPcFanHum(true);
     }
 
     function powerOffPC() {
@@ -1659,6 +1733,7 @@ let gameStarted = false;
           obj.material = offScreenMat;
         }
       }
+      setPcFanHum(false);
     }
 
     function zoomToMonitors() {
@@ -1689,8 +1764,7 @@ let gameStarted = false;
 
       camera.fov = 65;
       camera.updateProjectionMatrix();
-      camera.position.set(0.0, 2.75, 4.4);
-      camera.lookAt(0.5, 1.65, -3.5);
+      applyHomeCameraLook();
       if (window._updateMonitorCanvas && pcPoweredOn) {
         window._updateMonitorCanvas(false);
         window._monitorTexture.needsUpdate = true;
@@ -1762,21 +1836,52 @@ let gameStarted = false;
       }
     });
 
+    function softReentryToRoad() {
+      // Sterzo/velocità azzerati, traffico allontanato, breve grace period
+      keys.left = keys.right = keys.up = keys.down = false;
+      currentKmh = 0;
+      const pitX = roadWidth / 2 + 2;
+      targetX = pitX;
+      carGroup.position.x = pitX;
+      carGroup.rotation.set(0, 0, 0);
+
+      for (let ti = 0; ti < trafficCars.length; ti++) {
+        const t = trafficCars[ti];
+        // Spinge i veicoli lontani dal player
+        if (Math.abs(t.mesh.position.z) < 40) {
+          t.mesh.position.z = t.isIncoming ? -55 - (ti % 6) * 12 : -70 - (ti % 6) * 14;
+        }
+      }
+
+      spawnGraceUntil = performance.now() + 3500;
+      stopSignGroup.position.z = -3.8;
+      stopSignGroup.visible = true;
+      parkBayGroup.visible = true;
+      isAfk = false;
+      parkedSinceTime = null;
+      restModalShown = false;
+      lastInputTime = performance.now();
+      lastFrameTime = performance.now();
+    }
+
     function enterHomeRoom() {
       isHomeMode = true;
       isMonitorZoomed = false;
+      homeLookYaw = 0;
       setRoomNeons(false);
       powerOffPC();
       if (roomChairGroup) roomChairGroup.visible = true;
 
       restModal.classList.remove('visible');
-      stopIndicator.classList.remove('visible');
       telemetryBox.classList.add('hidden');
       speedometerBr.classList.add('hidden');
       hudEl.classList.add('hidden');
       homeHudEl.classList.add('visible');
       
       miniRadioEl.classList.add('hidden');
+      // Musica di guida in pausa in Safehouse (si controlla dal PC se vuoi)
+      pauseRadioAudio();
+      setPcFanHum(false);
 
       highwayGroup.visible = false;
       roomGroup.visible = true;
@@ -1784,8 +1889,7 @@ let gameStarted = false;
 
       camera.fov = 65;
       camera.updateProjectionMatrix();
-      camera.position.set(0.0, 2.75, 4.4);
-      camera.lookAt(0.5, 1.65, -3.5);
+      applyHomeCameraLook();
     }
 
     function returnToPitStop() {
@@ -1795,6 +1899,7 @@ let gameStarted = false;
       roomGroup.visible = false;
       highwayGroup.visible = true;
       scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
+      setPcFanHum(false);
 
       homeHudEl.classList.remove('visible');
       hudEl.classList.remove('hidden');
@@ -1802,31 +1907,15 @@ let gameStarted = false;
       speedometerBr.classList.remove('hidden');
       
       miniRadioEl.classList.remove('hidden');
+      resumeRadioAudioIfOn();
 
-      const pitX = roadWidth / 2 + 2;
-      currentKmh = 0;
-      targetX = pitX;
-      carGroup.position.x = pitX;
-      carGroup.rotation.set(0, 0, 0);
-
-      stopSignGroup.position.z = -3.8;
-      stopSignGroup.visible = true;
-      parkBayGroup.visible = true;
-      isAfk = true;
-      parkedSinceTime = performance.now();
-      restModalShown = false;
-      stopIndicator.classList.add('visible');
-      if (document.getElementById('pit-timer')) {
-        document.getElementById('pit-timer').textContent = '5s';
-      }
+      softReentryToRoad();
 
       camera.fov = 65;
       camera.updateProjectionMatrix();
+      const pitX = roadWidth / 2 + 2;
       camera.position.set(pitX * 0.45, 3.2, 7.5);
       camera.lookAt(pitX * 0.3, 1.2, -10);
-
-      lastFrameTime = performance.now();
-      lastInputTime = performance.now();
     }
 
     // Aggiorna label BEST sulla start screen
@@ -1940,13 +2029,13 @@ let gameStarted = false;
     const kmDisplay = document.getElementById('km-display');
     const telemetryBox = document.getElementById('telemetry');
     const speedometerBr = document.getElementById('speedometer-br');
-    const stopIndicator = document.getElementById('stop-dashboard-indicator');
-    const pitTimerEl = document.getElementById('pit-timer');
     const restModal = document.getElementById('rest-modal');
     const modalKmValue = document.getElementById('modal-km-value');
     const btnContinue = document.getElementById('btn-continue');
     const afkWarning = document.getElementById('afk-warning');
     const afkWarningText = document.getElementById('afk-warning-text');
+
+    let spawnGraceUntil = 0;
 
     function closeRestModal() {
       restModal.classList.remove('visible');
@@ -1960,12 +2049,17 @@ let gameStarted = false;
       if (isHomeMode) return;
       lastInputTime = performance.now();
       if (afkWarning) afkWarning.classList.remove('visible');
-      if (isAfk || restModalShown) {
+      if (restModalShown) {
+        // CONTINUA dal modal → rientro morbido
         isAfk = false;
-        stopIndicator.classList.remove('visible');
         parkBayGroup.visible = false;
         closeRestModal();
-      } else if (!isAfk) {
+        softReentryToRoad();
+      } else if (isAfk) {
+        isAfk = false;
+        parkBayGroup.visible = false;
+        closeRestModal();
+      } else {
         parkBayGroup.visible = false;
       }
     }
@@ -1974,7 +2068,13 @@ let gameStarted = false;
 
     window.addEventListener('keydown', (e) => {
       resumeAudioContext();
-      if (isHomeMode) return;
+      if (isHomeMode) {
+        if (!isMonitorZoomed) {
+          if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+          if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+        }
+        return;
+      }
       const validKeys = ['a', 'A', 'ArrowLeft', 'd', 'D', 'ArrowRight', 'w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'];
       if (validKeys.includes(e.key)) registerActivity();
       if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
@@ -2029,10 +2129,11 @@ let gameStarted = false;
         updateEngineSound(0, true);
         if (afkWarning) afkWarning.classList.remove('visible');
         if (!isMonitorZoomed) {
-          const t = now * 0.0005;
-          camera.position.x = 0.0 + Math.sin(t) * 0.2;
-          camera.position.y = 2.75 + Math.cos(t * 0.8) * 0.05;
-          camera.lookAt(0.5, 1.65, -3.5);
+          // Guardare a sinistra (finestra) / destra con A/D o frecce — senza oscillazione
+          const lookSpeed = 1.35 * deltaTime;
+          if (keys.left) homeLookYaw = Math.max(HOME_YAW_MIN, homeLookYaw - lookSpeed);
+          if (keys.right) homeLookYaw = Math.min(HOME_YAW_MAX, homeLookYaw + lookSpeed);
+          applyHomeCameraLook();
         }
         renderer.render(scene, camera);
         return;
@@ -2070,7 +2171,6 @@ let gameStarted = false;
           parkedSinceTime = null;
           if (afkWarning) afkWarning.classList.remove('visible');
           parkBayGroup.visible = true;
-          stopIndicator.classList.add('visible');
           stopSignGroup.position.z = -3.8;
           stopSignGroup.visible = true;
         }
@@ -2147,15 +2247,11 @@ let gameStarted = false;
 
       if (currentKmh <= 0.05 && isInRestLane && stopSignAtRest) {
         currentKmh = 0;
-        if (!stopIndicator.classList.contains('visible')) stopIndicator.classList.add('visible');
 
         if (parkedSinceTime === null) {
           parkedSinceTime = now;
         } else {
           const elapsedParked = now - parkedSinceTime;
-          const remainingSec = Math.max(0, Math.ceil((PARKED_PROMPT_DELAY_MS - elapsedParked) / 1000));
-          pitTimerEl.textContent = `${remainingSec}s`;
-
           if (elapsedParked >= PARKED_PROMPT_DELAY_MS && !restModalShown) {
             restModalShown = true;
             const runKm = Math.max(0, totalKm);
@@ -2170,8 +2266,6 @@ let gameStarted = false;
       } else {
         if (!isAfk && currentKmh > 0.05) {
           parkedSinceTime = null;
-          pitTimerEl.textContent = `5s`;
-          stopIndicator.classList.remove('visible');
         }
       }
 
@@ -2225,6 +2319,14 @@ let gameStarted = false;
         const absDz = dz < 0 ? -dz : dz;
 
         if (absDx < halfWidth + 1.05 && absDz < halfLen + 2.15) {
+          const inGrace = now < spawnGraceUntil;
+          if (inGrace) {
+            // Durante il grace period sposta solo il traffico, senza frenate brutali
+            if (t.isIncoming) t.mesh.position.z -= (halfLen + 2.15 - absDz + 1.5);
+            else if (dz > 0) t.mesh.position.z -= (halfLen + 2.15 - absDz + 1.2);
+            else t.mesh.position.z += (halfLen + 2.15 - absDz + 1.2);
+            continue;
+          }
           // Feedback collisione
           if (shakeTime <= 0) {
             shakeTime = 0.22;

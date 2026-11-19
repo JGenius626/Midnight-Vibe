@@ -179,6 +179,21 @@ export function resetRadioUI() {
   updateAllRadioDisplays('[ RADIO OFF ]');
 }
 
+/** Pausa audio senza spegnere lo stato radio (es. ingresso Safehouse) */
+export function pauseRadioAudio() {
+  if (audioElement) audioElement.pause();
+}
+
+/** Riprende se la radio era ON */
+export function resumeRadioAudioIfOn() {
+  if (!radioOn || !audioElement) return;
+  if (!audioElement.src) {
+    loadAndPlayCurrentTrack();
+    return;
+  }
+  audioElement.play().catch(() => {});
+}
+
 // Bind knobs
 if (knobPwr) knobPwr.addEventListener('click', toggleRadioPower);
 if (knobStation) {
