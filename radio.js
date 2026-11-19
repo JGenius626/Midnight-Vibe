@@ -69,8 +69,9 @@ const knobVol = document.getElementById('knob-vol');
 export let lastPlayedUrl = null;
 export let currentTrackDisplay = '[ RADIO OFF ]';
 
-/** Callback opzionale: game.js può registrare un aggiornamento del monitor Algorhythm */
+/** Callback opzionale: game.js registra l'aggiornamento del monitor Algorhythm */
 let onRadioDisplayUpdate = null;
+
 export function setOnRadioDisplayUpdate(callback) {
   onRadioDisplayUpdate = callback;
 }
@@ -161,10 +162,8 @@ export function cycleVolume() {
         updateAllRadioDisplays(shuffledQueue[queueIndex].title);
       }
     }, 2000);
-  } else {
-    if (typeof onRadioDisplayUpdate === 'function') {
-      onRadioDisplayUpdate();
-    }
+  } else if (typeof onRadioDisplayUpdate === 'function') {
+    onRadioDisplayUpdate();
   }
 }
 

@@ -1491,12 +1491,12 @@ let gameStarted = false;
 
     buildCyberpunkRoom();
 
-    Radio.setOnRadioDisplayUpdate = () => {
+    Radio.setOnRadioDisplayUpdate(() => {
       if (window._updateAlgoMonitorCanvas && pcPoweredOn) {
         window._updateAlgoMonitorCanvas();
         if (window._algoTexture) window._algoTexture.needsUpdate = true;
       }
-    };
+    });
 
 
     const raycaster = new THREE.Raycaster();
