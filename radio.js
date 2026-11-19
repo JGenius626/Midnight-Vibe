@@ -70,7 +70,10 @@ export let lastPlayedUrl = null;
 export let currentTrackDisplay = '[ RADIO OFF ]';
 
 /** Callback opzionale: game.js può registrare un aggiornamento del monitor Algorhythm */
-export let onRadioDisplayUpdate = null;
+let onRadioDisplayUpdate = null;
+export function setOnRadioDisplayUpdate(callback) {
+  onRadioDisplayUpdate = callback;
+}
 
 export function updateAllRadioDisplays(text) {
   currentTrackDisplay = text;

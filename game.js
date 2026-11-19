@@ -1491,7 +1491,7 @@ let gameStarted = false;
 
     buildCyberpunkRoom();
 
-    Radio.onRadioDisplayUpdate = () => {
+    Radio.setOnRadioDisplayUpdate = () => {
       if (window._updateAlgoMonitorCanvas && pcPoweredOn) {
         window._updateAlgoMonitorCanvas();
         if (window._algoTexture) window._algoTexture.needsUpdate = true;
