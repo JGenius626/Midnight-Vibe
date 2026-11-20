@@ -250,7 +250,7 @@ let gameStarted = false;
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     // DPR più basso = meno pixel, frame più stabili in guida e Safehouse
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2));
     document.body.appendChild(renderer.domElement);
 
     const highwayGroup = new THREE.Group();
@@ -429,7 +429,7 @@ let gameStarted = false;
 
     const lamps = [];
     const lampSpacing = 22;
-    const lampCount = 10;
+    const lampCount = 7;
     const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
     const cyanBulbMat = new THREE.MeshBasicMaterial({ color: cyanColor });
     // Geometrie lampione condivise
@@ -936,7 +936,7 @@ let gameStarted = false;
       return group;
     }
 
-    const trafficCount = 12;
+    const trafficCount = 8;
     const spacingZ = 90;
     for (let i = 0; i < trafficCount; i++) {
       const isIncoming = i < 6;
@@ -1050,22 +1050,82 @@ let gameStarted = false;
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      // Parete sinistra: apertura esatta sul telaio (h=2.5 @ y=3.5, w=3.85 @ z=-1)
-      // z finestra: -2.925 .. 0.925 | y: 2.25 .. 4.75
-      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.075), wallMat);
-      leftWallBack.position.set(-7.5, 3.25, -4.9625);
-      roomGroup.add(leftWallBack);
-      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 6.075), wallMat);
-      leftWallFront.position.set(-7.5, 3.25, 3.9625);
-      roomGroup.add(leftWallFront);
-      const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.75, 3.85), wallMat);
-      leftWallTop.position.set(-7.5, 5.625, -1.0);
-      roomGroup.add(leftWallTop);
-      const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.25, 3.85), wallMat);
-      leftWallBottom.position.set(-7.5, 1.125, -1.0);
-      roomGroup.add(leftWallBottom);
+      // Parete sinistra intera + finestra a pannello (skyline sempre visibile, zero buchi)
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
+      leftWall.position.set(-7.5, 3.25, 0);
+      roomGroup.add(leftWall);
 
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
+      // Telaio finestra sul lato interno
+      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 3.9), trimPurpleMat);
+      winFrame.position.set(-7.32, 3.5, -1.0);
+      roomGroup.add(winFrame);
+      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 3.75), trimPurpleMat);
+      winCrossH.position.set(-7.30, 3.5, -1.0);
+      roomGroup.add(winCrossH);
+      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.4, 0.08), trimPurpleMat);
+      winCrossV.position.set(-7.30, 3.5, -1.0);
+      roomGroup.add(winCrossV);
+
+      // Skyline cyberpunk dipinto sul "vetro"
+      const skyCanvas = document.createElement('canvas');
+      skyCanvas.width = 512;
+      skyCanvas.height = 320;
+      const sCtx = skyCanvas.getContext('2d');
+      (function paintWindowSkyline() {
+        const g = sCtx.createLinearGradient(0, 0, 0, 320);
+        g.addColorStop(0, '#03050f');
+        g.addColorStop(0.35, '#0a1435');
+        g.addColorStop(0.7, '#1a1250');
+        g.addColorStop(1, '#2a1860');
+        sCtx.fillStyle = g;
+        sCtx.fillRect(0, 0, 512, 320);
+        const hg = sCtx.createRadialGradient(256, 290, 15, 256, 300, 240);
+        hg.addColorStop(0, 'rgba(140, 70, 220, 0.7)');
+        hg.addColorStop(0.4, 'rgba(60, 30, 120, 0.4)');
+        hg.addColorStop(1, 'rgba(0,0,0,0)');
+        sCtx.fillStyle = hg;
+        sCtx.fillRect(0, 120, 512, 200);
+        // stelle
+        sCtx.fillStyle = '#c8e0ff';
+        for (let i = 0; i < 50; i++) {
+          sCtx.globalAlpha = 0.25 + (i % 5) * 0.12;
+          sCtx.fillRect((i * 41 + 13) % 512, (i * 23 + 7) % 130, 2, 2);
+        }
+        sCtx.globalAlpha = 1;
+        const buildings = [
+          [8, 200, 48, 120], [62, 145, 58, 175], [128, 175, 44, 145],
+          [180, 110, 70, 210], [258, 155, 50, 165], [318, 95, 80, 225],
+          [405, 165, 55, 155], [468, 130, 40, 190]
+        ];
+        buildings.forEach((b, i) => {
+          sCtx.fillStyle = i % 2 === 0 ? '#060814' : '#0a0e1c';
+          sCtx.fillRect(b[0], b[1], b[2], b[3]);
+          const cols = ['#00f0ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080'];
+          for (let row = 0; row < 12; row++) {
+            for (let col = 0; col < 4; col++) {
+              if ((row * 3 + col + i) % 3 === 0) continue;
+              sCtx.fillStyle = cols[(row + col + i) % cols.length];
+              sCtx.globalAlpha = 0.5 + ((row + col) % 4) * 0.12;
+              sCtx.fillRect(b[0] + 5 + col * 11, b[1] + 8 + row * 13, 6, 8);
+            }
+          }
+          sCtx.globalAlpha = 1;
+          sCtx.fillStyle = i % 2 === 0 ? '#00f0ff' : '#ff2a6d';
+          sCtx.fillRect(b[0] + b[2] - 3, b[1] + 12, 3, (b[3] * 0.55) | 0);
+        });
+      })();
+      const skyTex = new THREE.CanvasTexture(skyCanvas);
+      skyTex.needsUpdate = true;
+      const winGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.65, 2.35),
+        new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false })
+      );
+      // Faccia verso la stanza (da x negativo verso +x)
+      winGlass.position.set(-7.33, 3.5, -1.0);
+      winGlass.rotation.y = Math.PI / 2;
+      roomGroup.add(winGlass);
+
+const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       rightWall.position.set(7.5, 3.25, 0);
       roomGroup.add(rightWall);
 
@@ -1127,80 +1187,7 @@ let gameStarted = false;
       registerLedStrip(stripCornerL, glowLime);
       roomGroup.add(stripCornerL);
 
-      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.55, 3.85), trimPurpleMat);
-      winFrame.position.set(-7.35, 3.5, -1.0);
-      roomGroup.add(winFrame);
-      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 3.7), trimPurpleMat);
-      winCrossH.position.set(-7.30, 3.5, -1.0);
-      roomGroup.add(winCrossH);
-      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.35, 0.1), trimPurpleMat);
-      winCrossV.position.set(-7.30, 3.5, -1.0);
-      roomGroup.add(winCrossV);
 
-      // Skyline sul vetro (texture opaca leggibile, vista dalla stanza)
-      const skyCanvas = document.createElement('canvas');
-      skyCanvas.width = 512;
-      skyCanvas.height = 320;
-      const sCtx = skyCanvas.getContext('2d');
-      (function paintWindowSkyline() {
-        const g = sCtx.createLinearGradient(0, 0, 0, 320);
-        g.addColorStop(0, '#02040c');
-        g.addColorStop(0.4, '#0a1028');
-        g.addColorStop(0.75, '#1a1040');
-        g.addColorStop(1, '#2a1850');
-        sCtx.fillStyle = g;
-        sCtx.fillRect(0, 0, 512, 320);
-        // alone viola
-        const hg = sCtx.createRadialGradient(260, 280, 20, 260, 300, 220);
-        hg.addColorStop(0, 'rgba(120, 60, 200, 0.65)');
-        hg.addColorStop(0.5, 'rgba(40, 20, 80, 0.35)');
-        hg.addColorStop(1, 'rgba(0,0,0,0)');
-        sCtx.fillStyle = hg;
-        sCtx.fillRect(0, 140, 512, 180);
-        const buildings = [
-          [10, 210, 50, 110], [70, 150, 55, 170], [135, 185, 42, 135],
-          [185, 120, 65, 200], [260, 165, 48, 155], [318, 100, 75, 220],
-          [400, 175, 55, 145], [460, 140, 45, 180]
-        ];
-        buildings.forEach((b, i) => {
-          sCtx.fillStyle = i % 2 === 0 ? '#080a14' : '#0c1020';
-          sCtx.fillRect(b[0], b[1], b[2], b[3]);
-          for (let row = 0; row < 10; row++) {
-            for (let col = 0; col < 4; col++) {
-              if ((row + col + i) % 2 === 0) continue;
-              const colors = ['#00f0ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080'];
-              sCtx.fillStyle = colors[(row + col + i) % colors.length];
-              sCtx.globalAlpha = 0.55 + ((row + col) % 3) * 0.15;
-              sCtx.fillRect(b[0] + 6 + col * 12, b[1] + 10 + row * 14, 7, 9);
-            }
-          }
-          sCtx.globalAlpha = 1;
-          sCtx.fillStyle = i % 3 === 0 ? '#00f0ff' : '#ff2a6d';
-          sCtx.fillRect(b[0] + b[2] - 4, b[1] + 15, 4, Math.floor(b[3] * 0.5));
-        });
-        // stelle
-        sCtx.fillStyle = '#ffffff';
-        for (let i = 0; i < 40; i++) {
-          sCtx.globalAlpha = 0.3 + (i % 5) * 0.1;
-          sCtx.fillRect((i * 37) % 512, (i * 19) % 140, 2, 2);
-        }
-        sCtx.globalAlpha = 1;
-      })();
-      const skyTex = new THREE.CanvasTexture(skyCanvas);
-      skyTex.needsUpdate = true;
-      const winGlass = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.7, 2.4),
-        new THREE.MeshBasicMaterial({
-          map: skyTex,
-          side: THREE.DoubleSide,
-          depthWrite: true
-        })
-      );
-      // leggermente fuori dalla parete, rivolto verso la stanza
-      winGlass.position.set(-7.55, 3.5, -1.0);
-      // -PI/2: faccia frontale rivolta verso la stanza (+X)
-      winGlass.rotation.y = -Math.PI / 2;
-      roomGroup.add(winGlass);
 
       function makeTechPoster(title, sub, accentHex) {
         const c = document.createElement('canvas');
@@ -1754,6 +1741,17 @@ let gameStarted = false;
       window._monitorTexture = monitorTexture;
       window._updateAlgoMonitorCanvas = drawAlgoMonitorCanvas;
       window._algoTexture = algoTex;
+
+      // Performance: mesh statiche della stanza non ricalcolano la matrix ogni frame
+      roomGroup.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.matrixAutoUpdate = false;
+          obj.updateMatrix();
+          if (obj.material && obj.material.map) {
+            // ok
+          }
+        }
+      });
     }
 
     buildCyberpunkRoom();
@@ -2089,7 +2087,7 @@ let gameStarted = false;
       highwayGroup.visible = false;
       roomGroup.visible = true;
       // Nebbia leggera anche indoor
-      scene.fog = new THREE.FogExp2(bgColor, 0.008);
+      scene.fog = null; // Safehouse senza nebbia (finestra e stanza più leggibili/fluide)
 
       camera.fov = 65;
       camera.updateProjectionMatrix();
@@ -2363,7 +2361,7 @@ let gameStarted = false;
         // Equalizer: aggiorna 1 frame su 3 (meno lag in Safehouse)
         if (pcPoweredOn && Radio.radioOn && window._updateAlgoMonitorCanvas) {
           window._eqFrame = (window._eqFrame || 0) + 1;
-          if (window._eqFrame % 3 === 0) {
+          if (window._eqFrame % 5 === 0) {
             window._updateAlgoMonitorCanvas();
             if (window._algoTexture) window._algoTexture.needsUpdate = true;
           }
