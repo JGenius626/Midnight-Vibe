@@ -1050,12 +1050,13 @@ let gameStarted = false;
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      // Parete sinistra: apertura allineata al telaio (2.5h x 3.8w @ y=3.5, z=-1)
-      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.05), wallMat);
-      leftWallBack.position.set(-7.5, 3.25, -4.975);
+      // Parete sinistra: apertura esatta sul telaio (h=2.5 @ y=3.5, w=3.85 @ z=-1)
+      // z finestra: -2.925 .. 0.925 | y: 2.25 .. 4.75
+      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.075), wallMat);
+      leftWallBack.position.set(-7.5, 3.25, -4.9625);
       roomGroup.add(leftWallBack);
-      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 5.05), wallMat);
-      leftWallFront.position.set(-7.5, 3.25, 4.425);
+      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 6.075), wallMat);
+      leftWallFront.position.set(-7.5, 3.25, 3.9625);
       roomGroup.add(leftWallFront);
       const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.75, 3.85), wallMat);
       leftWallTop.position.set(-7.5, 5.625, -1.0);
@@ -1129,88 +1130,77 @@ let gameStarted = false;
       const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.55, 3.85), trimPurpleMat);
       winFrame.position.set(-7.35, 3.5, -1.0);
       roomGroup.add(winFrame);
-      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 3.7), trimPurpleMat);
-      winCrossH.position.set(-7.28, 3.5, -1.0);
+      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 3.7), trimPurpleMat);
+      winCrossH.position.set(-7.30, 3.5, -1.0);
       roomGroup.add(winCrossH);
-      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.35, 0.08), trimPurpleMat);
-      winCrossV.position.set(-7.28, 3.5, -1.0);
+      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.35, 0.1), trimPurpleMat);
+      winCrossV.position.set(-7.30, 3.5, -1.0);
       roomGroup.add(winCrossV);
 
-      // Vetro con skyline dipinto (città in lontananza, sempre leggibile)
+      // Skyline sul vetro (texture opaca leggibile, vista dalla stanza)
       const skyCanvas = document.createElement('canvas');
       skyCanvas.width = 512;
       skyCanvas.height = 320;
       const sCtx = skyCanvas.getContext('2d');
-      function paintWindowSkyline() {
+      (function paintWindowSkyline() {
         const g = sCtx.createLinearGradient(0, 0, 0, 320);
-        g.addColorStop(0, '#050818');
-        g.addColorStop(0.45, '#0a1430');
-        g.addColorStop(0.7, '#12102a');
-        g.addColorStop(1, '#1a0a28');
+        g.addColorStop(0, '#02040c');
+        g.addColorStop(0.4, '#0a1028');
+        g.addColorStop(0.75, '#1a1040');
+        g.addColorStop(1, '#2a1850');
         sCtx.fillStyle = g;
         sCtx.fillRect(0, 0, 512, 320);
-        // bagliore orizzonte
-        const hg = sCtx.createRadialGradient(256, 250, 10, 256, 260, 200);
-        hg.addColorStop(0, 'rgba(80, 40, 140, 0.55)');
+        // alone viola
+        const hg = sCtx.createRadialGradient(260, 280, 20, 260, 300, 220);
+        hg.addColorStop(0, 'rgba(120, 60, 200, 0.65)');
+        hg.addColorStop(0.5, 'rgba(40, 20, 80, 0.35)');
         hg.addColorStop(1, 'rgba(0,0,0,0)');
         sCtx.fillStyle = hg;
-        sCtx.fillRect(0, 160, 512, 160);
-        // silhouettes edifici
+        sCtx.fillRect(0, 140, 512, 180);
         const buildings = [
-          [20, 200, 55, 120], [80, 160, 48, 160], [135, 190, 40, 130],
-          [185, 140, 60, 180], [255, 175, 45, 145], [310, 130, 70, 190],
-          [390, 185, 50, 135], [450, 155, 42, 165]
+          [10, 210, 50, 110], [70, 150, 55, 170], [135, 185, 42, 135],
+          [185, 120, 65, 200], [260, 165, 48, 155], [318, 100, 75, 220],
+          [400, 175, 55, 145], [460, 140, 45, 180]
         ];
         buildings.forEach((b, i) => {
-          sCtx.fillStyle = i % 2 === 0 ? '#0c0e1a' : '#101428';
+          sCtx.fillStyle = i % 2 === 0 ? '#080a14' : '#0c1020';
           sCtx.fillRect(b[0], b[1], b[2], b[3]);
-          // finestre sparse
-          sCtx.fillStyle = '#00f0ff';
-          for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 3; col++) {
-              if ((row + col + i) % 3 !== 0) continue;
-              sCtx.globalAlpha = 0.35 + ((row * 3 + col) % 5) * 0.1;
-              sCtx.fillRect(b[0] + 8 + col * 14, b[1] + 12 + row * 16, 6, 8);
+          for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 4; col++) {
+              if ((row + col + i) % 2 === 0) continue;
+              const colors = ['#00f0ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080'];
+              sCtx.fillStyle = colors[(row + col + i) % colors.length];
+              sCtx.globalAlpha = 0.55 + ((row + col) % 3) * 0.15;
+              sCtx.fillRect(b[0] + 6 + col * 12, b[1] + 10 + row * 14, 7, 9);
             }
           }
           sCtx.globalAlpha = 1;
-          // neon laterale
-          sCtx.fillStyle = i % 3 === 0 ? '#ff2a6d' : '#a8ff00';
-          sCtx.globalAlpha = 0.7;
-          sCtx.fillRect(b[0] + b[2] - 3, b[1] + 20, 3, b[3] * 0.45);
-          sCtx.globalAlpha = 1;
+          sCtx.fillStyle = i % 3 === 0 ? '#00f0ff' : '#ff2a6d';
+          sCtx.fillRect(b[0] + b[2] - 4, b[1] + 15, 4, Math.floor(b[3] * 0.5));
         });
-      }
-      paintWindowSkyline();
+        // stelle
+        sCtx.fillStyle = '#ffffff';
+        for (let i = 0; i < 40; i++) {
+          sCtx.globalAlpha = 0.3 + (i % 5) * 0.1;
+          sCtx.fillRect((i * 37) % 512, (i * 19) % 140, 2, 2);
+        }
+        sCtx.globalAlpha = 1;
+      })();
       const skyTex = new THREE.CanvasTexture(skyCanvas);
-      skyTex.colorSpace = THREE.SRGBColorSpace;
+      skyTex.needsUpdate = true;
       const winGlass = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.55, 2.35),
+        new THREE.PlaneGeometry(3.7, 2.4),
         new THREE.MeshBasicMaterial({
           map: skyTex,
-          transparent: true,
-          opacity: 0.92,
           side: THREE.DoubleSide,
-          depthWrite: false
+          depthWrite: true
         })
       );
-      winGlass.position.set(-7.42, 3.5, -1.0);
-      winGlass.rotation.y = Math.PI / 2;
+      // leggermente fuori dalla parete, rivolto verso la stanza
+      winGlass.position.set(-7.55, 3.5, -1.0);
+      // -PI/2: faccia frontale rivolta verso la stanza (+X)
+      winGlass.rotation.y = -Math.PI / 2;
       roomGroup.add(winGlass);
-      // leggero riflesso interno sul vetro
-      const winSheen = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.55, 2.35),
-        new THREE.MeshBasicMaterial({
-          color: 0x88c8ff,
-          transparent: true,
-          opacity: 0.06,
-          side: THREE.DoubleSide,
-          depthWrite: false
-        })
-      );
-      winSheen.position.set(-7.40, 3.5, -1.0);
-      winSheen.rotation.y = Math.PI / 2;
-      roomGroup.add(winSheen);
 
       function makeTechPoster(title, sub, accentHex) {
         const c = document.createElement('canvas');
@@ -1826,6 +1816,22 @@ let gameStarted = false;
       // Senza corrente di stanza il PC non può restare acceso
       if (!on && pcPoweredOn) {
         powerOffPC();
+      }
+      // Interruttore ON + PC spento → LED rossi standby
+      if (on && !pcPoweredOn) {
+        for (const ring of pcFanRings) {
+          ring.material = matPcLedRed;
+        }
+      }
+      // Interruttore OFF → LED totalmente spenti
+      if (!on) {
+        for (const ring of pcFanRings) {
+          ring.material = matLedOff;
+        }
+        if (pcFrontStripMesh) pcFrontStripMesh.material = matLedOff;
+        if (pcGpuMesh) pcGpuMesh.material = matLedOff;
+        if (kbGlowMesh) kbGlowMesh.material = matLedOff;
+        if (mouseGlowMesh) mouseGlowMesh.material = matLedOff;
       }
       if (changed) playUiClick(on ? 520 : 280, 0.05, 0.03);
     }
@@ -2465,13 +2471,6 @@ let gameStarted = false;
 
       const isInRestLane = Math.abs(carGroup.position.x - restAreaTargetX) < 0.45;
       const stopSignAtRest = stopSignGroup.visible && Math.abs(stopSignGroup.position.z - (-3.8)) < 0.05;
-
-      // Hint corsia di sosta
-      const pitLaneHint = document.getElementById('pit-lane-hint');
-      if (pitLaneHint) {
-        const showPitHint = isInRestLane && !restModalShown && !isHomeMode && currentKmh < 80;
-        pitLaneHint.classList.toggle('visible', showPitHint);
-      }
 
       if (currentKmh <= 0.05 && isInRestLane && stopSignAtRest) {
         currentKmh = 0;
