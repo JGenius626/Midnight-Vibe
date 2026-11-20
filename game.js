@@ -1102,7 +1102,7 @@ let gameStarted = false;
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
 
-      // Skyline 3D fuori (MeshBasic = sempre visibile)
+      // Skyline 3D lontano dalla stanza (prospettiva da appartamento)
       const windowCity = new THREE.Group();
       const bMat = new THREE.MeshBasicMaterial({ color: 0x0a0c18 });
       const winMats = [
@@ -1116,40 +1116,47 @@ let gameStarted = false;
         new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
         new THREE.MeshBasicMaterial({ color: 0xff2a6d })
       ];
+      // 25–40 unità dalla finestra; edifici più grandi per restare leggibili
       [
-        { x: -11.0, z: -2.5, w: 1.6, h: 9, d: 1.5 },
-        { x: -11.5, z: -0.4, w: 2.0, h: 13, d: 1.7 },
-        { x: -11.2, z: 1.5, w: 1.5, h: 10, d: 1.4 },
-        { x: -12.8, z: -1.6, w: 1.8, h: 15, d: 1.8 },
-        { x: -12.5, z: 0.7, w: 1.6, h: 8, d: 1.3 }
+        { x: -32, z: -8, w: 4.5, h: 28, d: 4.0 },
+        { x: -36, z: -2, w: 5.5, h: 38, d: 4.5 },
+        { x: -34, z: 5, w: 4.0, h: 30, d: 3.8 },
+        { x: -42, z: -5, w: 5.0, h: 45, d: 5.0 },
+        { x: -40, z: 3, w: 4.2, h: 24, d: 3.5 },
+        { x: -48, z: -1, w: 6.0, h: 50, d: 5.5 },
+        { x: -38, z: 9, w: 3.8, h: 22, d: 3.2 }
       ].forEach((cs, idx) => {
         const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), bMat);
-        body.position.set(cs.x, cs.h * 0.5 - 0.3, cs.z);
+        body.position.set(cs.x, cs.h * 0.45, cs.z);
         windowCity.add(body);
-        for (let row = 0; row < 6; row++) {
-          for (let col = 0; col < 2; col++) {
+        for (let row = 0; row < 10; row++) {
+          for (let col = 0; col < 3; col++) {
             if ((row + col + idx) % 2 === 0) continue;
             const lite = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.28, 0.32),
+              new THREE.PlaneGeometry(0.7, 0.85),
               winMats[(row + col + idx) % winMats.length]
             );
-            lite.position.set(cs.x + cs.w * 0.51, 0.9 + row * 1.5, cs.z - 0.25 + col * 0.4);
+            lite.position.set(
+              cs.x + cs.w * 0.51,
+              2.0 + row * 2.4,
+              cs.z - cs.d * 0.25 + col * 0.9
+            );
             lite.rotation.y = Math.PI / 2;
             windowCity.add(lite);
           }
         }
         const neon = new THREE.Mesh(
-          new THREE.BoxGeometry(0.07, cs.h * 0.5, 0.07),
+          new THREE.BoxGeometry(0.2, cs.h * 0.45, 0.2),
           neonMats[idx % 2]
         );
-        neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
+        neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.35, cs.z);
         windowCity.add(neon);
       });
       const skyPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(14, 10),
-        new THREE.MeshBasicMaterial({ color: 0x12082a, side: THREE.DoubleSide })
+        new THREE.PlaneGeometry(60, 40),
+        new THREE.MeshBasicMaterial({ color: 0x0a0618, side: THREE.DoubleSide })
       );
-      skyPlane.position.set(-15, 5, 0);
+      skyPlane.position.set(-58, 12, 0);
       skyPlane.rotation.y = Math.PI / 2;
       windowCity.add(skyPlane);
       roomGroup.add(windowCity);
