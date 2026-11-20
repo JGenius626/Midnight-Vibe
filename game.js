@@ -9,8 +9,7 @@ const setStation = Radio.setStation;
 const cycleVolume = Radio.cycleVolume;
 const updateAllRadioDisplays = Radio.updateAllRadioDisplays;
 const resetRadioUI = Radio.resetRadioUI;
-const pauseRadioAudio = Radio.pauseRadioAudio;
-const resumeRadioAudioIfOn = Radio.resumeRadioAudioIfOn;
+const forceRadioOff = Radio.forceRadioOff;
 
 let gameStarted = false;
     let isHomeMode = false;
@@ -181,7 +180,8 @@ let gameStarted = false;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
-    scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
+    // Densità moderata: lontano sfuma, skyline vicino resta leggibile
+    scene.fog = new THREE.FogExp2(0x0a1028, 0.0045);
 
     const camera = new THREE.PerspectiveCamera(
       65,
@@ -1308,6 +1308,21 @@ let gameStarted = false;
         aCtx.fillStyle = '#00f0ff';
         aCtx.font = 'bold 18px "Courier New", monospace';
         aCtx.fillText(`VOL: ${volumeSteps[Radio.volumeStepIndex]}%`, 371, 198);
+
+        // Equalizer cyberpunk (animato solo con radio ON)
+        const eqY = 236;
+        const eqBase = 228;
+        const bars = 16;
+        const tNow = performance.now() * 0.004;
+        for (let i = 0; i < bars; i++) {
+          let h = 3;
+          if (Radio.radioOn) {
+            h = 4 + Math.abs(Math.sin(tNow + i * 0.55)) * 14
+              + Math.abs(Math.sin(tNow * 1.7 + i * 1.3)) * 10;
+          }
+          aCtx.fillStyle = i % 2 === 0 ? '#a8ff00' : '#00f0ff';
+          aCtx.fillRect(40 + i * 27, eqBase - h, 18, h);
+        }
       }
 
       drawAlgoMonitorCanvas();
@@ -1632,33 +1647,10 @@ let gameStarted = false;
     let fanOsc = null;
     let fanGain = null;
     let fanFilter = null;
-    function setPcFanHum(on) {
-      resumeAudioContext();
-      if (!audioCtx) return;
-      if (on) {
-        if (!fanOsc) {
-          try {
-            fanOsc = audioCtx.createOscillator();
-            fanOsc.type = 'sawtooth';
-            fanOsc.frequency.value = 58;
-            fanFilter = audioCtx.createBiquadFilter();
-            fanFilter.type = 'lowpass';
-            fanFilter.frequency.value = 180;
-            fanFilter.Q.value = 0.5;
-            fanGain = audioCtx.createGain();
-            fanGain.gain.value = 0;
-            fanOsc.connect(fanFilter);
-            fanFilter.connect(fanGain);
-            fanGain.connect(audioCtx.destination);
-            fanOsc.start();
-          } catch (_) {
-            fanOsc = null;
-            return;
-          }
-        }
-        if (fanGain) fanGain.gain.setTargetAtTime(0.012, audioCtx.currentTime, 0.25);
-      } else if (fanGain) {
-        fanGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+    function setPcFanHum(/* on */) {
+      // Ronzio disattivato: a lungo risultava fastidioso
+      if (fanGain && audioCtx) {
+        fanGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
       }
     }
 
@@ -1911,13 +1903,14 @@ let gameStarted = false;
       homeHudEl.classList.add('visible');
       
       miniRadioEl.classList.add('hidden');
-      // Musica di guida in pausa in Safehouse (si controlla dal PC se vuoi)
-      pauseRadioAudio();
+      // Radio completamente OFF entrando in Safehouse (si riaccende solo dal PC)
+      forceRadioOff();
       setPcFanHum(false);
 
       highwayGroup.visible = false;
       roomGroup.visible = true;
-      scene.fog = new THREE.FogExp2(bgColor, 0.012);
+      // Nebbia leggera anche indoor
+      scene.fog = new THREE.FogExp2(bgColor, 0.008);
 
       camera.fov = 65;
       camera.updateProjectionMatrix();
@@ -1925,6 +1918,10 @@ let gameStarted = false;
       if (window._updateTechMonitorCanvas) {
         window._updateTechMonitorCanvas();
         if (window._techTexture) window._techTexture.needsUpdate = true;
+      }
+      if (window._updateAlgoMonitorCanvas) {
+        window._updateAlgoMonitorCanvas();
+        if (window._algoTexture) window._algoTexture.needsUpdate = true;
       }
     }
 
@@ -1934,7 +1931,8 @@ let gameStarted = false;
       document.body.style.cursor = 'default';
       roomGroup.visible = false;
       highwayGroup.visible = true;
-      scene.fog = new THREE.FogExp2(0x0a1028, 0.009);
+      // Nebbia leggera: skyline leggibile, tinta ancora percepibile
+      scene.fog = new THREE.FogExp2(0x0a1028, 0.0045);
       setPcFanHum(false);
 
       homeHudEl.classList.remove('visible');
@@ -1943,11 +1941,11 @@ let gameStarted = false;
       speedometerBr.classList.remove('hidden');
       
       miniRadioEl.classList.remove('hidden');
-      resumeRadioAudioIfOn();
+      // Radio resta OFF finché non la riaccendi dalla mini-radio
 
       softReentryToRoad();
 
-      camera.fov = 65;
+      camera.fov = 62;
       camera.updateProjectionMatrix();
       const pitX = roadWidth / 2 + 2;
       camera.position.set(pitX * 0.45, 3.2, 7.5);
@@ -2175,6 +2173,11 @@ let gameStarted = false;
           if (keys.right) homeLookYaw = Math.min(HOME_YAW_MAX, homeLookYaw + lookSpeed);
           applyHomeCameraLook();
         }
+        // Equalizer animato sul monitor radio se radio ON e PC acceso
+        if (pcPoweredOn && Radio.radioOn && window._updateAlgoMonitorCanvas) {
+          window._updateAlgoMonitorCanvas();
+          if (window._algoTexture) window._algoTexture.needsUpdate = true;
+        }
         renderer.render(scene, camera);
         return;
       }
@@ -2341,28 +2344,36 @@ let gameStarted = false;
         rearLight.color.setHex(wantBrake ? 0xff5a9a : stopRedColor);
       }
 
-      // FOV dinamico: 65 → ~72 a 320 km/h
-      const targetFov = 65 + Math.min(1, currentKmh / 320) * 7;
-      if (Math.abs(camera.fov - targetFov) > 0.05) {
-        camera.fov += (targetFov - camera.fov) * Math.min(1, 3.5 * deltaTime);
+      // FOV dinamico più marcato: ~60 a fermo → ~82 a 320 km/h
+      const speedT = Math.min(1, currentKmh / 320);
+      const targetFov = 60 + speedT * 22;
+      if (Math.abs(camera.fov - targetFov) > 0.08) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, 5 * deltaTime);
         camera.updateProjectionMatrix();
       }
 
-      // Tinta nebbia / neon lampioni ogni ~100 KM
+      // Atmosfera ogni ~100 KM: nebbia + cielo + lampioni (densità leggera, tinta evidente)
       const phase = Math.floor(safeKm / 100) % 4;
       if (!window._fogTargetColor) {
         window._fogTargetColor = new THREE.Color(0x0a1028);
+        window._bgTargetColor = new THREE.Color(0x070b1a);
         window._fogPhase = -1;
       }
       if (phase !== window._fogPhase) {
         window._fogPhase = phase;
-        const fogTargets = [0x0a1028, 0x160a28, 0x0a1a18, 0x1a1008];
+        const fogTargets = [0x0a1028, 0x1a0a30, 0x061a14, 0x1c1208];
+        const bgTargets = [0x070b1a, 0x12081e, 0x061210, 0x140e08];
         const lampTargets = [cyanColor, 0xc070ff, 0x70ffb0, 0xffb060];
         window._fogTargetColor.setHex(fogTargets[phase]);
+        window._bgTargetColor.setHex(bgTargets[phase]);
         if (cyanBulbMat) cyanBulbMat.color.setHex(lampTargets[phase]);
+        if (scene.fog) scene.fog.density = 0.0045;
       }
       if (scene.fog && scene.fog.color) {
-        scene.fog.color.lerp(window._fogTargetColor, Math.min(1, 0.35 * deltaTime));
+        scene.fog.color.lerp(window._fogTargetColor, Math.min(1, 0.55 * deltaTime));
+      }
+      if (scene.background && scene.background.isColor) {
+        scene.background.lerp(window._bgTargetColor, Math.min(1, 0.4 * deltaTime));
       }
 
       updateEngineSound(currentKmh, isHomeMode || isAfk);

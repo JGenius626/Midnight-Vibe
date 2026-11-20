@@ -212,19 +212,17 @@ export function resetRadioUI() {
   updateAllRadioDisplays('[ RADIO OFF ]');
 }
 
-/** Pausa audio senza spegnere lo stato radio (es. ingresso Safehouse) */
-export function pauseRadioAudio() {
-  if (audioElement) audioElement.pause();
-}
-
-/** Riprende se la radio era ON */
-export function resumeRadioAudioIfOn() {
-  if (!radioOn || !audioElement) return;
-  if (!audioElement.src) {
-    loadAndPlayCurrentTrack();
-    return;
+/** Spegne del tutto la radio (stato + audio + UI knobs) — usato entrando in Safehouse */
+export function forceRadioOff() {
+  radioOn = false;
+  if (knobPwr) {
+    knobPwr.classList.remove('active');
+    knobPwr.textContent = 'OFF';
+    knobPwr.style.transform = 'rotate(-45deg)';
   }
-  audioElement.play().catch(() => {});
+  if (audioElement) audioElement.pause();
+  if (volumeDisplayTimeout) clearTimeout(volumeDisplayTimeout);
+  updateAllRadioDisplays('[ RADIO OFF ]');
 }
 
 // Bind knobs
