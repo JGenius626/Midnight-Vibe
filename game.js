@@ -1050,18 +1050,18 @@ let gameStarted = false;
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      // Parete sinistra con foro finestra (skyline visibile)
-      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.2), wallMat);
-      leftWallBack.position.set(-7.5, 3.25, -4.9);
+      // Parete sinistra: apertura allineata al telaio (2.5h x 3.8w @ y=3.5, z=-1)
+      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.05), wallMat);
+      leftWallBack.position.set(-7.5, 3.25, -4.975);
       roomGroup.add(leftWallBack);
-      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 5.2), wallMat);
-      leftWallFront.position.set(-7.5, 3.25, 4.4);
+      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 5.05), wallMat);
+      leftWallFront.position.set(-7.5, 3.25, 4.425);
       roomGroup.add(leftWallFront);
-      const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 4.0), wallMat);
-      leftWallTop.position.set(-7.5, 5.5, -1.0);
+      const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.75, 3.85), wallMat);
+      leftWallTop.position.set(-7.5, 5.625, -1.0);
       roomGroup.add(leftWallTop);
-      const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 4.0), wallMat);
-      leftWallBottom.position.set(-7.5, 1.0, -1.0);
+      const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.25, 3.85), wallMat);
+      leftWallBottom.position.set(-7.5, 1.125, -1.0);
       roomGroup.add(leftWallBottom);
 
       const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
@@ -1126,90 +1126,91 @@ let gameStarted = false;
       registerLedStrip(stripCornerL, glowLime);
       roomGroup.add(stripCornerL);
 
-      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.5, 3.8), trimPurpleMat);
+      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.55, 3.85), trimPurpleMat);
       winFrame.position.set(-7.35, 3.5, -1.0);
       roomGroup.add(winFrame);
-      // Vetro semi-trasparente: si vede lo skyline fuori
+      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 3.7), trimPurpleMat);
+      winCrossH.position.set(-7.28, 3.5, -1.0);
+      roomGroup.add(winCrossH);
+      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.35, 0.08), trimPurpleMat);
+      winCrossV.position.set(-7.28, 3.5, -1.0);
+      roomGroup.add(winCrossV);
+
+      // Vetro con skyline dipinto (città in lontananza, sempre leggibile)
+      const skyCanvas = document.createElement('canvas');
+      skyCanvas.width = 512;
+      skyCanvas.height = 320;
+      const sCtx = skyCanvas.getContext('2d');
+      function paintWindowSkyline() {
+        const g = sCtx.createLinearGradient(0, 0, 0, 320);
+        g.addColorStop(0, '#050818');
+        g.addColorStop(0.45, '#0a1430');
+        g.addColorStop(0.7, '#12102a');
+        g.addColorStop(1, '#1a0a28');
+        sCtx.fillStyle = g;
+        sCtx.fillRect(0, 0, 512, 320);
+        // bagliore orizzonte
+        const hg = sCtx.createRadialGradient(256, 250, 10, 256, 260, 200);
+        hg.addColorStop(0, 'rgba(80, 40, 140, 0.55)');
+        hg.addColorStop(1, 'rgba(0,0,0,0)');
+        sCtx.fillStyle = hg;
+        sCtx.fillRect(0, 160, 512, 160);
+        // silhouettes edifici
+        const buildings = [
+          [20, 200, 55, 120], [80, 160, 48, 160], [135, 190, 40, 130],
+          [185, 140, 60, 180], [255, 175, 45, 145], [310, 130, 70, 190],
+          [390, 185, 50, 135], [450, 155, 42, 165]
+        ];
+        buildings.forEach((b, i) => {
+          sCtx.fillStyle = i % 2 === 0 ? '#0c0e1a' : '#101428';
+          sCtx.fillRect(b[0], b[1], b[2], b[3]);
+          // finestre sparse
+          sCtx.fillStyle = '#00f0ff';
+          for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 3; col++) {
+              if ((row + col + i) % 3 !== 0) continue;
+              sCtx.globalAlpha = 0.35 + ((row * 3 + col) % 5) * 0.1;
+              sCtx.fillRect(b[0] + 8 + col * 14, b[1] + 12 + row * 16, 6, 8);
+            }
+          }
+          sCtx.globalAlpha = 1;
+          // neon laterale
+          sCtx.fillStyle = i % 3 === 0 ? '#ff2a6d' : '#a8ff00';
+          sCtx.globalAlpha = 0.7;
+          sCtx.fillRect(b[0] + b[2] - 3, b[1] + 20, 3, b[3] * 0.45);
+          sCtx.globalAlpha = 1;
+        });
+      }
+      paintWindowSkyline();
+      const skyTex = new THREE.CanvasTexture(skyCanvas);
+      skyTex.colorSpace = THREE.SRGBColorSpace;
       const winGlass = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.5, 2.2),
+        new THREE.PlaneGeometry(3.55, 2.35),
         new THREE.MeshBasicMaterial({
-          color: 0x88aacc,
+          map: skyTex,
           transparent: true,
-          opacity: 0.12,
+          opacity: 0.92,
           side: THREE.DoubleSide,
           depthWrite: false
         })
       );
-      winGlass.position.set(-7.24, 3.5, -1.0);
+      winGlass.position.set(-7.42, 3.5, -1.0);
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
-      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 3.5), trimPurpleMat);
-      winCrossH.position.set(-7.22, 3.5, -1.0);
-      roomGroup.add(winCrossH);
-      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.06), trimPurpleMat);
-      winCrossV.position.set(-7.22, 3.5, -1.0);
-      roomGroup.add(winCrossV);
-
-      // Skyline fuori dalla finestra (lato sinistro, oltre la parete)
-      const windowCity = new THREE.Group();
-      const cityNightMat = new THREE.MeshStandardMaterial({
-        color: 0x12101c,
-        emissive: 0x1a1035,
-        emissiveIntensity: 0.4,
-        roughness: 0.7
-      });
-      const cityWinMats = [
-        new THREE.MeshBasicMaterial({ color: 0x1a3a5c }),
-        new THREE.MeshBasicMaterial({ color: 0x2a2040 }),
-        new THREE.MeshBasicMaterial({ color: 0x3a2850 }),
-        new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
-        new THREE.MeshBasicMaterial({ color: 0xa8ff00 }),
-        new THREE.MeshBasicMaterial({ color: 0xff2a6d })
-      ];
-      const citySpecs = [
-        { x: -10.2, z: -2.4, w: 1.6, h: 8, d: 1.4 },
-        { x: -10.8, z: -0.5, w: 2.0, h: 12, d: 1.6 },
-        { x: -10.4, z: 1.4, w: 1.5, h: 9, d: 1.3 },
-        { x: -12.0, z: -1.5, w: 1.8, h: 14, d: 1.8 }
-      ];
-      citySpecs.forEach((cs, idx) => {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), cityNightMat);
-        b.position.set(cs.x, cs.h * 0.5 - 0.2, cs.z);
-        windowCity.add(b);
-        // poche finestre emissive (meno draw call)
-        for (let row = 0; row < 5; row++) {
-          if (Math.random() > 0.3) {
-            const w = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.35, 0.4),
-              cityWinMats[(row + idx) % cityWinMats.length]
-            );
-            w.position.set(cs.x + cs.w * 0.51, 1.0 + row * 1.6, cs.z);
-            w.rotation.y = Math.PI / 2;
-            windowCity.add(w);
-          }
-        }
-        if (idx % 2 === 0) {
-          const neon = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, cs.h * 0.5, 0.08),
-            idx === 0 ? glowCyan : glowPink
-          );
-          neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
-          windowCity.add(neon);
-        }
-      });
-      const cityGlowPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(8, 7),
+      // leggero riflesso interno sul vetro
+      const winSheen = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.55, 2.35),
         new THREE.MeshBasicMaterial({
-          color: 0x1a1040,
+          color: 0x88c8ff,
           transparent: true,
-          opacity: 0.5,
-          side: THREE.DoubleSide
+          opacity: 0.06,
+          side: THREE.DoubleSide,
+          depthWrite: false
         })
       );
-      cityGlowPlane.position.set(-14, 4, 0);
-      cityGlowPlane.rotation.y = Math.PI / 2;
-      windowCity.add(cityGlowPlane);
-      roomGroup.add(windowCity);
+      winSheen.position.set(-7.40, 3.5, -1.0);
+      winSheen.rotation.y = Math.PI / 2;
+      roomGroup.add(winSheen);
 
       function makeTechPoster(title, sub, accentHex) {
         const c = document.createElement('canvas');
@@ -1362,7 +1363,7 @@ let gameStarted = false;
 
       // I tre cerchi luminosi del PC (rossi quando PC spento, verde-lime quando PC acceso)
       [2.28, 1.93, 1.58].forEach((fy, idx) => {
-        const fanRing = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.135, 24), matPcLedRed);
+        const fanRing = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.135, 24), matLedOff);
         fanRing.position.set(2.85, fy, 0.435);
         fanRing.userData = { isPcCase: true };
         pcClickables.push(fanRing);
@@ -1910,8 +1911,10 @@ let gameStarted = false;
 
     function powerOffPC() {
       pcPoweredOn = false;
+      // Con interruttore OFF: LED completamente spenti (niente rosso standby)
+      const ledMat = roomNeonOn ? matPcLedRed : matLedOff;
       for (const ring of pcFanRings) {
-        ring.material = matPcLedRed;
+        ring.material = ledMat;
       }
       if (pcFrontStripMesh) pcFrontStripMesh.material = matLedOff;
       if (pcGpuMesh) pcGpuMesh.material = matLedOff;
