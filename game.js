@@ -932,14 +932,17 @@ let gameStarted = false;
       return group;
     }
 
-    const trafficCount = 6;
-    const spacingZ = 90;
+    const trafficCount = 8;
+    const spacingZ = 70;
+    // Corsie: sinistra contro-manico, destra stesso senso del player
+    const incomingLanes = [-5.0, -2.8, -1.0];
+    const sameDirLanes = [1.2, 3.2, 5.0]; // 5.0 = prima corsia di destra
     for (let i = 0; i < trafficCount; i++) {
-      const isIncoming = i < 6;
-      const laneIndex = i % 6;
-      const xLane = isIncoming ? -2.2 : 1.5;
-      const zPos = -40 - (laneIndex * spacingZ);
-      const isBike = (i % 4 === 1);
+      const isIncoming = i % 2 === 0;
+      const laneIndex = Math.floor(i / 2) % 3;
+      const xLane = isIncoming ? incomingLanes[laneIndex] : sameDirLanes[laneIndex];
+      const zPos = -35 - (i * spacingZ * 0.55) - (laneIndex * 18);
+      const isBike = (i % 5 === 2);
       const colorIndex = i % trafficColors.length;
 
       const mesh = isBike
@@ -1410,7 +1413,7 @@ let gameStarted = false;
 
         // Simbolo power bianco all'interno del primo cerchio (in alto, idx === 0)
         if (idx === 0) {
-          const pwrWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+          const pwrWhiteMat = new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide });
           // Arco aperto in alto (da 125° a 415° -> apertura centrata a 90° = pi/2)
           const arcStart = Math.PI * 0.5 + 0.48;
           const arcLen = Math.PI * 2 - 0.96;
@@ -1694,7 +1697,7 @@ let gameStarted = false;
         deskGroup.add(screen);
       });
 
-      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshBasicMaterial({ color: 0x221538 }));
+      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshBasicMaterial({ color: 0xf0f4fa }));
       keyboard.position.set(0.0, 1.445, 0.35);
       deskGroup.add(keyboard);
       const kbGlow = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.01, 0.31), ledOffMat);
@@ -1702,7 +1705,7 @@ let gameStarted = false;
       kbGlowMesh = kbGlow;
       deskGroup.add(kbGlow);
 
-      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshBasicMaterial({ color: 0x221538 }));
+      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshBasicMaterial({ color: 0xf0f4fa }));
       mouse.position.set(0.85, 1.45, 0.35);
       deskGroup.add(mouse);
       const mouseGlow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.01, 0.18), ledOffMat);
@@ -2251,6 +2254,10 @@ const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       gameStarted = true;
       resetRadioUI();
 
+      // Terza corsia = prima di destra
+      targetX = maxLaneX;
+      carGroup.position.x = maxLaneX;
+
       resumeAudioContext();
       initBrakeSound();
 
@@ -2414,9 +2421,10 @@ const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       if (e.code === 'Space' || e.key === ' ') keys.handbrake = false;
     });
 
-    let targetX = 0;
-    const maxLaneX = roadWidth / 2 - 1.5;
+    const maxLaneX = roadWidth / 2 - 1.5; // ~5.5 = prima corsia di destra
     const restAreaTargetX = roadWidth / 2 + 2;
+    let targetX = maxLaneX;
+    carGroup.position.x = maxLaneX;
 
     let currentKmh = 0;
     const maxKmh = 320;
