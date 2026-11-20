@@ -118,6 +118,57 @@ let gameStarted = false;
       } catch (_) { /* ignore */ }
     }
 
+    // Rumore frenata continuo (stridio leggero proporzionale alla velocità)
+    let brakeNoiseNode = null;
+    let brakeNoiseGain = null;
+    let brakeNoiseFilter = null;
+    let brakeSoundReady = false;
+
+    function initBrakeSound() {
+      if (brakeSoundReady || !audioCtx) return;
+      try {
+        const bufferSize = 2 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        brakeNoiseNode = audioCtx.createBufferSource();
+        brakeNoiseNode.buffer = noiseBuffer;
+        brakeNoiseNode.loop = true;
+        brakeNoiseFilter = audioCtx.createBiquadFilter();
+        brakeNoiseFilter.type = 'bandpass';
+        brakeNoiseFilter.frequency.value = 900;
+        brakeNoiseFilter.Q.value = 1.2;
+        brakeNoiseGain = audioCtx.createGain();
+        brakeNoiseGain.gain.value = 0;
+        brakeNoiseNode.connect(brakeNoiseFilter);
+        brakeNoiseFilter.connect(brakeNoiseGain);
+        brakeNoiseGain.connect(audioCtx.destination);
+        brakeNoiseNode.start();
+        brakeSoundReady = true;
+      } catch (e) {
+        console.warn('Brake audio unavailable', e);
+      }
+    }
+
+    function updateBrakeSound(braking, kmh, handbrake) {
+      if (!audioCtx) return;
+      if (!brakeSoundReady) initBrakeSound();
+      if (!brakeNoiseGain || !brakeNoiseFilter) return;
+      const t0 = audioCtx.currentTime;
+      if (!braking || kmh < 3) {
+        brakeNoiseGain.gain.setTargetAtTime(0, t0, 0.08);
+        return;
+      }
+      const speedT = Math.min(1, kmh / 280);
+      const base = handbrake ? 0.028 : 0.016;
+      const vol = base + speedT * (handbrake ? 0.045 : 0.032);
+      const freq = handbrake ? (700 + speedT * 900) : (550 + speedT * 600);
+      brakeNoiseFilter.frequency.setTargetAtTime(freq, t0, 0.05);
+      brakeNoiseGain.gain.setTargetAtTime(vol, t0, 0.06);
+    }
+
     // Record personale
     const BEST_KM_KEY = 'midnightVibe_bestKm';
     const CAREER_KM_KEY = 'midnightVibe_careerKm';
@@ -999,9 +1050,19 @@ let gameStarted = false;
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
-      leftWall.position.set(-7.5, 3.25, 0);
-      roomGroup.add(leftWall);
+      // Parete sinistra con foro finestra (skyline visibile)
+      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.2), wallMat);
+      leftWallBack.position.set(-7.5, 3.25, -4.9);
+      roomGroup.add(leftWallBack);
+      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 5.2), wallMat);
+      leftWallFront.position.set(-7.5, 3.25, 4.4);
+      roomGroup.add(leftWallFront);
+      const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 4.0), wallMat);
+      leftWallTop.position.set(-7.5, 5.5, -1.0);
+      roomGroup.add(leftWallTop);
+      const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.0, 4.0), wallMat);
+      leftWallBottom.position.set(-7.5, 1.0, -1.0);
+      roomGroup.add(leftWallBottom);
 
       const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       rightWall.position.set(7.5, 3.25, 0);
@@ -1072,9 +1133,9 @@ let gameStarted = false;
       const winGlass = new THREE.Mesh(
         new THREE.PlaneGeometry(3.5, 2.2),
         new THREE.MeshBasicMaterial({
-          color: 0x0a1830,
+          color: 0x88aacc,
           transparent: true,
-          opacity: 0.28,
+          opacity: 0.12,
           side: THREE.DoubleSide,
           depthWrite: false
         })
@@ -1106,60 +1167,48 @@ let gameStarted = false;
         new THREE.MeshBasicMaterial({ color: 0xff2a6d })
       ];
       const citySpecs = [
-        { x: -11.5, z: -2.8, w: 1.8, h: 9, d: 1.6 },
-        { x: -12.2, z: -0.6, w: 2.2, h: 14, d: 1.8 },
-        { x: -11.8, z: 1.6, w: 1.6, h: 11, d: 1.5 },
-        { x: -13.5, z: -1.8, w: 2.0, h: 16, d: 2.0 },
-        { x: -13.0, z: 0.8, w: 1.7, h: 8, d: 1.4 },
-        { x: -14.5, z: -0.2, w: 2.4, h: 12, d: 2.2 }
+        { x: -10.2, z: -2.4, w: 1.6, h: 8, d: 1.4 },
+        { x: -10.8, z: -0.5, w: 2.0, h: 12, d: 1.6 },
+        { x: -10.4, z: 1.4, w: 1.5, h: 9, d: 1.3 },
+        { x: -12.0, z: -1.5, w: 1.8, h: 14, d: 1.8 }
       ];
       citySpecs.forEach((cs, idx) => {
         const b = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), cityNightMat);
         b.position.set(cs.x, cs.h * 0.5 - 0.2, cs.z);
         windowCity.add(b);
-        // finestre sparse sul lato rivolto alla room (+X)
-        for (let row = 0; row < 8; row++) {
-          for (let col = 0; col < 3; col++) {
-            if (Math.random() > 0.35) {
-              const w = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.22, 0.28),
-                cityWinMats[(row + col + idx) % cityWinMats.length]
-              );
-              w.position.set(
-                cs.x + cs.w * 0.51,
-                0.8 + row * 1.15,
-                cs.z - cs.d * 0.3 + col * 0.35
-              );
-              w.rotation.y = Math.PI / 2;
-              windowCity.add(w);
-            }
+        // poche finestre emissive (meno draw call)
+        for (let row = 0; row < 5; row++) {
+          if (Math.random() > 0.3) {
+            const w = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.35, 0.4),
+              cityWinMats[(row + idx) % cityWinMats.length]
+            );
+            w.position.set(cs.x + cs.w * 0.51, 1.0 + row * 1.6, cs.z);
+            w.rotation.y = Math.PI / 2;
+            windowCity.add(w);
           }
         }
         if (idx % 2 === 0) {
           const neon = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, cs.h * 0.55, 0.08),
-            idx % 4 === 0 ? glowCyan : glowPink
+            new THREE.BoxGeometry(0.08, cs.h * 0.5, 0.08),
+            idx === 0 ? glowCyan : glowPink
           );
-          neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.45, cs.z);
+          neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
           windowCity.add(neon);
         }
       });
-      // bagliore urbano di fondo
       const cityGlowPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(10, 8),
+        new THREE.PlaneGeometry(8, 7),
         new THREE.MeshBasicMaterial({
           color: 0x1a1040,
           transparent: true,
-          opacity: 0.55,
+          opacity: 0.5,
           side: THREE.DoubleSide
         })
       );
-      cityGlowPlane.position.set(-16, 4, 0);
+      cityGlowPlane.position.set(-14, 4, 0);
       cityGlowPlane.rotation.y = Math.PI / 2;
       windowCity.add(cityGlowPlane);
-      const cityAmbient = new THREE.PointLight(0x4a30a0, 1.2, 18);
-      cityAmbient.position.set(-12, 5, -0.5);
-      windowCity.add(cityAmbient);
       roomGroup.add(windowCity);
 
       function makeTechPoster(title, sub, accentHex) {
@@ -1274,6 +1323,13 @@ let gameStarted = false;
       const bedsideRedLight = new THREE.PointLight(0xff1e42, 1.4, 5);
       bedsideRedLight.position.set(-2.9, 1.05, -3.9);
       roomGroup.add(bedsideRedLight);
+      // Collegati all'interruttore stanza
+      window._bedsideRedLight = bedsideRedLight;
+      window._lampShade = lampShade;
+      window._lampRedMat = lampRedMat;
+      window._lampOffMat = new THREE.MeshStandardMaterial({ color: 0x2a2035, roughness: 0.6 });
+      bedsideRedLight.intensity = 0; // parte spenta con stanza
+      lampShade.material = window._lampOffMat;
 
       const deskGroup = new THREE.Group();
       const deskTop = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.12, 1.9), darkWoodMat);
@@ -1759,6 +1815,17 @@ let gameStarted = false;
       if (switchBtnMesh) {
         switchBtnMesh.rotation.z = on ? 0.14 : -0.14;
       }
+      // Lampada comodino legata all'interruttore
+      if (window._bedsideRedLight) {
+        window._bedsideRedLight.intensity = on ? 1.4 : 0;
+      }
+      if (window._lampShade) {
+        window._lampShade.material = on ? window._lampRedMat : window._lampOffMat;
+      }
+      // Senza corrente di stanza il PC non può restare acceso
+      if (!on && pcPoweredOn) {
+        powerOffPC();
+      }
       if (changed) playUiClick(on ? 520 : 280, 0.05, 0.03);
     }
 
@@ -1807,6 +1874,11 @@ let gameStarted = false;
     });
 
     function powerOnPC() {
+      // Serve l'interruttore stanza ON per alimentare il PC
+      if (!roomNeonOn) {
+        playUiClick(140, 0.08, 0.02);
+        return;
+      }
       pcPoweredOn = true;
       for (const ring of pcFanRings) {
         ring.material = matPcLedLime;
@@ -1960,7 +2032,7 @@ let gameStarted = false;
 
     function softReentryToRoad() {
       // Sterzo/velocità azzerati, traffico allontanato, breve grace period
-      keys.left = keys.right = keys.up = keys.down = false;
+      keys.left = keys.right = keys.up = keys.down = keys.handbrake = false;
       currentKmh = 0;
       const pitX = roadWidth / 2 + 2;
       targetX = pitX;
@@ -2071,6 +2143,7 @@ let gameStarted = false;
       resetRadioUI();
 
       resumeAudioContext();
+      initBrakeSound();
 
       lastFrameTime = performance.now();
       registerActivity();
@@ -2137,11 +2210,11 @@ let gameStarted = false;
       gCtx.fillText(isParked ? 'PARK' : `${Math.round(kmh)}`, cx, cy + 28);
     }
 
-    const keys = { left: false, right: false, up: false, down: false };
+    const keys = { left: false, right: false, up: false, down: false, handbrake: false };
     let lastInputTime = performance.now();
     const AFK_LIMIT_MS = 15000;
     const AFK_WARN_MS = 10000;
-    const PARKED_PROMPT_DELAY_MS = 5000;
+    const PARKED_PROMPT_DELAY_MS = 0; // niente timer in corsia di sosta
 
     let isAfk = false;
     let parkedSinceTime = null;
@@ -2217,6 +2290,11 @@ let gameStarted = false;
       if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
       if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
       if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        keys.handbrake = true;
+        registerActivity();
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -2224,6 +2302,7 @@ let gameStarted = false;
       if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
       if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
       if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
+      if (e.code === 'Space' || e.key === ' ') keys.handbrake = false;
     });
 
     let targetX = 0;
@@ -2263,6 +2342,7 @@ let gameStarted = false;
 
       if (isHomeMode) {
         updateEngineSound(0, true);
+        updateBrakeSound(false, 0, false);
         if (afkWarning) afkWarning.classList.remove('visible');
         if (!isMonitorZoomed) {
           // Guardare a sinistra (finestra) / destra con A/D o frecce — senza oscillazione
@@ -2271,16 +2351,19 @@ let gameStarted = false;
           if (keys.right) homeLookYaw = Math.min(HOME_YAW_MAX, homeLookYaw + lookSpeed);
           applyHomeCameraLook();
         }
-        // Equalizer animato sul monitor radio se radio ON e PC acceso
+        // Equalizer: aggiorna 1 frame su 3 (meno lag in Safehouse)
         if (pcPoweredOn && Radio.radioOn && window._updateAlgoMonitorCanvas) {
-          window._updateAlgoMonitorCanvas();
-          if (window._algoTexture) window._algoTexture.needsUpdate = true;
+          window._eqFrame = (window._eqFrame || 0) + 1;
+          if (window._eqFrame % 3 === 0) {
+            window._updateAlgoMonitorCanvas();
+            if (window._algoTexture) window._algoTexture.needsUpdate = true;
+          }
         }
         renderer.render(scene, camera);
         return;
       }
 
-      if (keys.left || keys.right || keys.up || keys.down) {
+      if (keys.left || keys.right || keys.up || keys.down || keys.handbrake) {
         registerActivity();
       }
 
@@ -2345,7 +2428,7 @@ let gameStarted = false;
         }
       } else {
         // Cruise a 50 SOLO se sotto tunnel E nessun input acceleratore (né freno intenzionale prioritario)
-        if (underTunnel && !keys.up && !keys.down) {
+        if (underTunnel && !keys.up && !keys.down && !keys.handbrake) {
           const cruiseTarget = 50;
           const approach = 55 * deltaTime;
           if (currentKmh < cruiseTarget - 0.5) currentKmh = Math.min(cruiseTarget, currentKmh + approach);
@@ -2354,12 +2437,13 @@ let gameStarted = false;
           // non entrare nella rest area mentre sei sotto il tunnel
           if (targetX > maxLaneX) targetX = maxLaneX;
         } else {
-          if (keys.up) {
+          // Freno / freno a mano hanno priorità sull'acceleratore
+          if (keys.down || keys.handbrake) {
+            const decelRate = keys.handbrake ? (320 / 2.8) : (320 / 5);
+            currentKmh = Math.max(0, currentKmh - decelRate * deltaTime);
+          } else if (keys.up) {
             let accelRate = currentKmh < 100 ? (100 / 3.4) : (currentKmh < 200 ? (100 / 6.5) : (120 / 20));
             currentKmh = Math.min(maxKmh, currentKmh + accelRate * deltaTime);
-          } else if (keys.down) {
-            const decelRate = 320 / 5;
-            currentKmh = Math.max(0, currentKmh - decelRate * deltaTime);
           } else {
             const isInRestLane = Math.abs(carGroup.position.x - restAreaTargetX) < 0.45;
             const friction = isInRestLane ? 45 : 25;
@@ -2431,8 +2515,8 @@ let gameStarted = false;
         lastCareerFlushKm = safeKm;
       }
 
-      // Stop posteriori più vivi in frenata
-      const wantBrake = keys.down && currentKmh > 2;
+      // Stop posteriori + suono frenata
+      const wantBrake = (keys.down || keys.handbrake) && currentKmh > 2;
       if (wantBrake !== brakingLightsOn) {
         brakingLightsOn = wantBrake;
         for (let bi = 0; bi < tailBars.length; bi++) {
@@ -2441,6 +2525,7 @@ let gameStarted = false;
         rearLight.intensity = wantBrake ? 3.4 : 1.5;
         rearLight.color.setHex(wantBrake ? 0xff5a9a : stopRedColor);
       }
+      updateBrakeSound(wantBrake, currentKmh, keys.handbrake);
 
       // FOV dinamico più marcato: ~60 a fermo → ~82 a 320 km/h
       const speedT = Math.min(1, currentKmh / 320);
