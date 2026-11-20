@@ -1102,128 +1102,111 @@ let gameStarted = false;
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
 
-      // Skyline VIP fuori dalla finestra — leggibile, colorato, centrato sul vetro
+      // Skyline VIP: edifici argento, distanza media, contrasto sul cielo scuro
       const windowCity = new THREE.Group();
-      // silhouette edifici (blu notte leggibile, non nero)
-      const bMatA = new THREE.MeshBasicMaterial({ color: 0x1a2248 });
-      const bMatB = new THREE.MeshBasicMaterial({ color: 0x22183a });
-      const bMatC = new THREE.MeshBasicMaterial({ color: 0x142030 });
+      const bodyMats = [
+        new THREE.MeshBasicMaterial({ color: 0xc5ccd8 }), // argento chiaro
+        new THREE.MeshBasicMaterial({ color: 0x9aa6b8 }), // argento medio
+        new THREE.MeshBasicMaterial({ color: 0xd8dee8 }), // alluminio
+        new THREE.MeshBasicMaterial({ color: 0x8892a4 })  // steel
+      ];
       const winMats = [
         new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
         new THREE.MeshBasicMaterial({ color: 0xa8ff00 }),
         new THREE.MeshBasicMaterial({ color: 0xff2a6d }),
+        new THREE.MeshBasicMaterial({ color: 0xffb86c }),
         new THREE.MeshBasicMaterial({ color: 0xc070ff }),
-        new THREE.MeshBasicMaterial({ color: 0xffe080 }),
         new THREE.MeshBasicMaterial({ color: 0xffffff })
       ];
       const neonCyan = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
       const neonPink = new THREE.MeshBasicMaterial({ color: 0xff2a6d });
       const neonLime = new THREE.MeshBasicMaterial({ color: 0xa8ff00 });
-      // Distanza moderata (x -16…-26): si leggono dal vetro, non attaccati al muro
-      // Centrati su z≈-1 (asse della finestra)
+      // x -16…-24: lontani dal vetro ma ancora leggibili
       const cityBuildings = [
-        { x: -17, z: -4.5, w: 3.2, h: 18, d: 3.0, mat: bMatA },
-        { x: -18.5, z: -1.0, w: 4.0, h: 26, d: 3.5, mat: bMatB },
-        { x: -17.5, z: 2.5, w: 3.0, h: 20, d: 2.8, mat: bMatC },
-        { x: -22, z: -3.0, w: 3.8, h: 32, d: 3.6, mat: bMatA },
-        { x: -23, z: 1.2, w: 3.4, h: 22, d: 3.0, mat: bMatB },
-        { x: -26, z: -1.0, w: 5.0, h: 36, d: 4.5, mat: bMatC }
+        { x: -16.5, z: -4.2, w: 3.0, h: 18, d: 2.8 },
+        { x: -17.5, z: -1.0, w: 3.6, h: 26, d: 3.2 },
+        { x: -16.8, z: 2.2, w: 2.8, h: 20, d: 2.6 },
+        { x: -20.5, z: -2.8, w: 3.4, h: 30, d: 3.0 },
+        { x: -21.0, z: 1.0, w: 3.2, h: 22, d: 2.8 },
+        { x: -24.0, z: -1.0, w: 4.2, h: 34, d: 3.8 }
       ];
       cityBuildings.forEach((cs, idx) => {
-        const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), cs.mat);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), bodyMats[idx % 4]);
         body.position.set(cs.x, cs.h * 0.42, cs.z);
         windowCity.add(body);
-        // griglia finestre luminose
-        for (let row = 0; row < 12; row++) {
+        // sottile bordo neon (non un secondo edificio)
+        const edge = new THREE.Mesh(
+          new THREE.BoxGeometry(0.15, cs.h * 0.7, 0.15),
+          idx % 2 === 0 ? neonCyan : neonPink
+        );
+        edge.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
+        windowCity.add(edge);
+        for (let row = 0; row < 11; row++) {
           for (let col = 0; col < 3; col++) {
-            if ((row + col * 2 + idx) % 3 === 0) continue;
+            if ((row + col + idx) % 2 === 0) continue;
             const lite = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.55, 0.7),
+              new THREE.PlaneGeometry(0.5, 0.6),
               winMats[(row + col + idx) % winMats.length]
             );
             lite.position.set(
               cs.x + cs.w * 0.51,
-              1.5 + row * 1.7,
-              cs.z - cs.d * 0.28 + col * 0.75
+              1.4 + row * 1.55,
+              cs.z - cs.d * 0.28 + col * 0.7
             );
             lite.rotation.y = Math.PI / 2;
             windowCity.add(lite);
           }
         }
-        // neon verticale
-        const neonMat = idx % 3 === 0 ? neonCyan : (idx % 3 === 1 ? neonPink : neonLime);
-        const neon = new THREE.Mesh(
-          new THREE.BoxGeometry(0.18, cs.h * 0.55, 0.18),
-          neonMat
-        );
-        neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.38, cs.z);
-        windowCity.add(neon);
       });
-
-      // Landmark VIP: torre con insegna neon "NIGHT"
+      // Torre landmark argento + insegna
       const tower = new THREE.Mesh(
-        new THREE.BoxGeometry(3.6, 42, 3.6),
-        new THREE.MeshBasicMaterial({ color: 0x18102e })
+        new THREE.BoxGeometry(3.2, 38, 3.2),
+        new THREE.MeshBasicMaterial({ color: 0xb0b8c8 })
       );
-      tower.position.set(-20.5, 18, -1.0);
+      tower.position.set(-19.0, 16.5, -1.0);
       windowCity.add(tower);
+      const towerEdge = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 30, 0.2),
+        neonLime
+      );
+      towerEdge.position.set(-17.3, 15, -1.0);
+      windowCity.add(towerEdge);
       const signCanvas = document.createElement('canvas');
       signCanvas.width = 256;
       signCanvas.height = 64;
       const sg = signCanvas.getContext('2d');
       sg.fillStyle = '#0a0610';
       sg.fillRect(0, 0, 256, 64);
-      sg.strokeStyle = '#ff2a6d';
+      sg.strokeStyle = '#00f0ff';
       sg.lineWidth = 4;
       sg.strokeRect(4, 4, 248, 56);
-      sg.fillStyle = '#00f0ff';
-      sg.font = 'bold 36px Courier New, monospace';
+      sg.fillStyle = '#a8ff00';
+      sg.font = 'bold 34px Courier New, monospace';
       sg.textAlign = 'center';
       sg.textBaseline = 'middle';
       sg.fillText('NIGHT', 128, 34);
       const signTex = new THREE.CanvasTexture(signCanvas);
       signTex.needsUpdate = true;
       const sign = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.2, 1.05),
+        new THREE.PlaneGeometry(3.8, 0.95),
         new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false, side: THREE.DoubleSide })
       );
-      sign.position.set(-18.6, 22, -1.0);
+      sign.position.set(-17.35, 20, -1.0);
       sign.rotation.y = Math.PI / 2;
       windowCity.add(sign);
-      // antenna / punta luminosa
-      const tip = new THREE.Mesh(
-        new THREE.BoxGeometry(0.35, 5, 0.35),
-        neonCyan
-      );
-      tip.position.set(-20.5, 41, -1.0);
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.5, 0.4), neonCyan);
+      tip.position.set(-19.0, 37.5, -1.0);
       windowCity.add(tip);
-      const tipGlow = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.8, 0.8),
-        neonPink
-      );
-      tipGlow.position.set(-20.5, 43.5, -1.0);
+      const tipGlow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), neonPink);
+      tipGlow.position.set(-19.0, 40, -1.0);
       windowCity.add(tipGlow);
 
-      // alone urbano sotto
-      const groundGlow = new THREE.Mesh(
-        new THREE.PlaneGeometry(40, 20),
-        new THREE.MeshBasicMaterial({
-          color: 0x3a1860,
-          transparent: true,
-          opacity: 0.35,
-          side: THREE.DoubleSide
-        })
-      );
-      groundGlow.rotation.x = -Math.PI / 2;
-      groundGlow.position.set(-24, 0.05, -1);
-      windowCity.add(groundGlow);
-
-      // cielo
+      // cielo scuro per far risaltare l'argento
       const skyPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(50, 36),
-        new THREE.MeshBasicMaterial({ color: 0x0c0820, side: THREE.DoubleSide })
+        new THREE.PlaneGeometry(40, 30),
+        new THREE.MeshBasicMaterial({ color: 0x080c1a, side: THREE.DoubleSide })
       );
-      skyPlane.position.set(-32, 14, -1);
+      skyPlane.position.set(-28, 12, -1);
       skyPlane.rotation.y = Math.PI / 2;
       windowCity.add(skyPlane);
 
@@ -1232,6 +1215,11 @@ let gameStarted = false;
       const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       rightWall.position.set(7.5, 3.25, 0);
       roomGroup.add(rightWall);
+
+      // Parete anteriore (chiude la stanza)
+      const frontWall = new THREE.Mesh(new THREE.BoxGeometry(16, 6.5, 0.3), wallMat);
+      frontWall.position.set(0, 3.25, 7);
+      roomGroup.add(frontWall);
 
       // Tetto: stanza chiusa (niente cielo visibile)
       const ceiling = new THREE.Mesh(
@@ -1836,8 +1824,15 @@ let gameStarted = false;
       const roomLightMain = new THREE.PointLight(0xffffff, 2.4, 16);
       roomLightMain.position.set(0, 4.5, 0);
       roomGroup.add(roomLightMain);
+      window._roomLightCyan = roomLightCyan;
+      window._roomLightPurple = roomLightPurple;
+      window._roomLightMain = roomLightMain;
 
-      const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
+            // Fill debole sempre attivo (stanza leggibile anche a interruttore OFF)
+      const roomFillLight = new THREE.AmbientLight(0x2a2040, 0.55);
+      roomGroup.add(roomFillLight);
+
+const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       deskLight.position.set(0.0, 3.1, -1.8);
       roomGroup.add(deskLight);
 
@@ -1911,6 +1906,16 @@ let gameStarted = false;
       // Lampada comodino legata all'interruttore
       if (window._bedsideRedLight) {
         window._bedsideRedLight.intensity = on ? 1.4 : 0;
+      }
+      // Luci stanza: piene con interruttore ON, soft fill se OFF (niente nero totale)
+      if (window._roomLightMain) {
+        window._roomLightMain.intensity = on ? 2.4 : 0.45;
+      }
+      if (window._roomLightCyan) {
+        window._roomLightCyan.intensity = on ? 3.6 : 0.25;
+      }
+      if (window._roomLightPurple) {
+        window._roomLightPurple.intensity = on ? 3.2 : 0.3;
       }
       if (window._lampShade) {
         window._lampShade.material = on ? window._lampRedMat : window._lampOffMat;
