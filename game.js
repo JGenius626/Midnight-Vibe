@@ -1007,6 +1007,21 @@ let gameStarted = false;
       rightWall.position.set(7.5, 3.25, 0);
       roomGroup.add(rightWall);
 
+      // Tetto: stanza chiusa (niente cielo visibile)
+      const ceiling = new THREE.Mesh(
+        new THREE.BoxGeometry(16, 0.25, 14),
+        new THREE.MeshStandardMaterial({ color: 0x1a1430, roughness: 0.75, metalness: 0.1 })
+      );
+      ceiling.position.set(0, 6.55, 0);
+      roomGroup.add(ceiling);
+      const ceilingTrim = new THREE.Mesh(
+        new THREE.BoxGeometry(15.6, 0.04, 13.6),
+        glowCyan
+      );
+      ceilingTrim.position.set(0, 6.42, 0);
+      registerLedStrip(ceilingTrim, glowCyan);
+      roomGroup.add(ceilingTrim);
+
       // Interruttore luce sulla parete destra (base grigio scuro, pulsante bianco)
       const switchGroup = new THREE.Group();
       const switchPlateMat = new THREE.MeshStandardMaterial({ color: 0x2a2d36, roughness: 0.45, metalness: 0.35 });
@@ -1053,20 +1068,99 @@ let gameStarted = false;
       const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.5, 3.8), trimPurpleMat);
       winFrame.position.set(-7.35, 3.5, -1.0);
       roomGroup.add(winFrame);
-      const winGlass = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.2), new THREE.MeshBasicMaterial({ color: 0x0c1830 }));
+      // Vetro semi-trasparente: si vede lo skyline fuori
+      const winGlass = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.5, 2.2),
+        new THREE.MeshBasicMaterial({
+          color: 0x0a1830,
+          transparent: true,
+          opacity: 0.28,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
       winGlass.position.set(-7.24, 3.5, -1.0);
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
-      const winGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.0), new THREE.MeshBasicMaterial({ color: 0x1a2850 }));
-      winGlow.position.set(-7.25, 3.5, -1.0);
-      winGlow.rotation.y = Math.PI / 2;
-      roomGroup.add(winGlow);
       const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 3.5), trimPurpleMat);
       winCrossH.position.set(-7.22, 3.5, -1.0);
       roomGroup.add(winCrossH);
       const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.2, 0.06), trimPurpleMat);
       winCrossV.position.set(-7.22, 3.5, -1.0);
       roomGroup.add(winCrossV);
+
+      // Skyline fuori dalla finestra (lato sinistro, oltre la parete)
+      const windowCity = new THREE.Group();
+      const cityNightMat = new THREE.MeshStandardMaterial({
+        color: 0x12101c,
+        emissive: 0x1a1035,
+        emissiveIntensity: 0.4,
+        roughness: 0.7
+      });
+      const cityWinMats = [
+        new THREE.MeshBasicMaterial({ color: 0x1a3a5c }),
+        new THREE.MeshBasicMaterial({ color: 0x2a2040 }),
+        new THREE.MeshBasicMaterial({ color: 0x3a2850 }),
+        new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
+        new THREE.MeshBasicMaterial({ color: 0xa8ff00 }),
+        new THREE.MeshBasicMaterial({ color: 0xff2a6d })
+      ];
+      const citySpecs = [
+        { x: -11.5, z: -2.8, w: 1.8, h: 9, d: 1.6 },
+        { x: -12.2, z: -0.6, w: 2.2, h: 14, d: 1.8 },
+        { x: -11.8, z: 1.6, w: 1.6, h: 11, d: 1.5 },
+        { x: -13.5, z: -1.8, w: 2.0, h: 16, d: 2.0 },
+        { x: -13.0, z: 0.8, w: 1.7, h: 8, d: 1.4 },
+        { x: -14.5, z: -0.2, w: 2.4, h: 12, d: 2.2 }
+      ];
+      citySpecs.forEach((cs, idx) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), cityNightMat);
+        b.position.set(cs.x, cs.h * 0.5 - 0.2, cs.z);
+        windowCity.add(b);
+        // finestre sparse sul lato rivolto alla room (+X)
+        for (let row = 0; row < 8; row++) {
+          for (let col = 0; col < 3; col++) {
+            if (Math.random() > 0.35) {
+              const w = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.22, 0.28),
+                cityWinMats[(row + col + idx) % cityWinMats.length]
+              );
+              w.position.set(
+                cs.x + cs.w * 0.51,
+                0.8 + row * 1.15,
+                cs.z - cs.d * 0.3 + col * 0.35
+              );
+              w.rotation.y = Math.PI / 2;
+              windowCity.add(w);
+            }
+          }
+        }
+        if (idx % 2 === 0) {
+          const neon = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, cs.h * 0.55, 0.08),
+            idx % 4 === 0 ? glowCyan : glowPink
+          );
+          neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.45, cs.z);
+          windowCity.add(neon);
+        }
+      });
+      // bagliore urbano di fondo
+      const cityGlowPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 8),
+        new THREE.MeshBasicMaterial({
+          color: 0x1a1040,
+          transparent: true,
+          opacity: 0.55,
+          side: THREE.DoubleSide
+        })
+      );
+      cityGlowPlane.position.set(-16, 4, 0);
+      cityGlowPlane.rotation.y = Math.PI / 2;
+      windowCity.add(cityGlowPlane);
+      const cityAmbient = new THREE.PointLight(0x4a30a0, 1.2, 18);
+      cityAmbient.position.set(-12, 5, -0.5);
+      windowCity.add(cityAmbient);
+      roomGroup.add(windowCity);
 
       function makeTechPoster(title, sub, accentHex) {
         const c = document.createElement('canvas');
@@ -1291,38 +1385,40 @@ let gameStarted = false;
           aCtx.fillText(btn.label, btn.x + 70, 130);
         });
 
+        // Power (compatto, solo ON/OFF)
         aCtx.fillStyle = Radio.radioOn ? 'rgba(168, 255, 0, 0.25)' : 'rgba(255, 42, 109, 0.25)';
-        aCtx.fillRect(36, 164, 210, 56);
+        aCtx.fillRect(36, 168, 96, 48);
         aCtx.strokeStyle = Radio.radioOn ? '#a8ff00' : '#ff2a6d';
-        aCtx.lineWidth = 3;
-        aCtx.strokeRect(36, 164, 210, 56);
+        aCtx.lineWidth = 2;
+        aCtx.strokeRect(36, 168, 96, 48);
         aCtx.fillStyle = Radio.radioOn ? '#a8ff00' : '#ff2a6d';
-        aCtx.font = 'bold 18px "Courier New", monospace';
-        aCtx.fillText(Radio.radioOn ? 'POWER: ON' : 'POWER: OFF', 141, 198);
+        aCtx.font = 'bold 16px "Courier New", monospace';
+        aCtx.fillText(Radio.radioOn ? 'ON' : 'OFF', 84, 198);
 
-        aCtx.fillStyle = 'rgba(0, 240, 255, 0.18)';
-        aCtx.fillRect(266, 164, 210, 56);
-        aCtx.strokeStyle = '#00f0ff';
-        aCtx.lineWidth = 3;
-        aCtx.strokeRect(266, 164, 210, 56);
-        aCtx.fillStyle = '#00f0ff';
-        aCtx.font = 'bold 18px "Courier New", monospace';
-        aCtx.fillText(`VOL: ${volumeSteps[Radio.volumeStepIndex]}%`, 371, 198);
-
-        // Equalizer cyberpunk (animato solo con radio ON)
-        const eqY = 236;
-        const eqBase = 228;
-        const bars = 16;
+        // Equalizer piccolo tra Power e Volume
+        const eqBase = 208;
+        const bars = 10;
         const tNow = performance.now() * 0.004;
+        const eqStartX = 150;
         for (let i = 0; i < bars; i++) {
-          let h = 3;
+          let h = 2;
           if (Radio.radioOn) {
-            h = 4 + Math.abs(Math.sin(tNow + i * 0.55)) * 14
-              + Math.abs(Math.sin(tNow * 1.7 + i * 1.3)) * 10;
+            h = 3 + Math.abs(Math.sin(tNow + i * 0.6)) * 10
+              + Math.abs(Math.sin(tNow * 1.8 + i * 1.2)) * 8;
           }
           aCtx.fillStyle = i % 2 === 0 ? '#a8ff00' : '#00f0ff';
-          aCtx.fillRect(40 + i * 27, eqBase - h, 18, h);
+          aCtx.fillRect(eqStartX + i * 20, eqBase - h, 14, h);
         }
+
+        // Volume (compatto, solo percentuale)
+        aCtx.fillStyle = 'rgba(0, 240, 255, 0.18)';
+        aCtx.fillRect(380, 168, 96, 48);
+        aCtx.strokeStyle = '#00f0ff';
+        aCtx.lineWidth = 2;
+        aCtx.strokeRect(380, 168, 96, 48);
+        aCtx.fillStyle = '#00f0ff';
+        aCtx.font = 'bold 16px "Courier New", monospace';
+        aCtx.fillText(`${volumeSteps[Radio.volumeStepIndex]}%`, 428, 198);
       }
 
       drawAlgoMonitorCanvas();
@@ -1758,6 +1854,8 @@ let gameStarted = false;
         }
       }
       setPcFanHum(false);
+      // Spegnendo il PC si spegne anche la radio
+      forceRadioOff();
     }
 
     function zoomToMonitors() {
@@ -1842,9 +1940,9 @@ let gameStarted = false;
             if (px >= 36 && px <= 176) setStation('PulseFM');
             else if (px >= 186 && px <= 326) setStation('NeonReggaeton');
             else if (px >= 336 && px <= 476) setStation('HazeWave');
-          } else if (py >= 164 && py <= 220) {
-            if (px >= 36 && px <= 246) toggleRadioPower();
-            else if (px >= 266 && px <= 476) cycleVolume();
+          } else if (py >= 168 && py <= 220) {
+            if (px >= 36 && px <= 132) toggleRadioPower();
+            else if (px >= 380 && px <= 476) cycleVolume();
           }
         } else if (monitorId === 'drive' && hit.uv) {
           const px = hit.uv.x * 512;
@@ -2461,19 +2559,20 @@ let gameStarted = false;
         gantryGroup.position.z = -500;
       }
 
-      const steerSpeed = 18 * deltaTime;
+      // Sterzo più morbido: meno sensibile, roll ridotto
+      const steerSpeed = 9.5 * deltaTime;
       if (!isAfk && currentSpeed > 0.005) {
         if (keys.left) targetX = Math.max(targetX - steerSpeed, -maxLaneX);
         if (keys.right) targetX = Math.min(targetX + steerSpeed, maxLaneX);
       }
 
       const prevX = carGroup.position.x;
-      const posLerp = 1 - Math.exp(-14 * deltaTime);
+      const posLerp = 1 - Math.exp(-7.5 * deltaTime);
       carGroup.position.x += (targetX - carGroup.position.x) * posLerp;
 
       const deltaX = carGroup.position.x - prevX;
-      carGroup.rotation.z = -deltaX * 0.45;
-      carGroup.rotation.y = -deltaX * 0.22;
+      carGroup.rotation.z = -deltaX * 0.28;
+      carGroup.rotation.y = -deltaX * 0.14;
 
       for (const wheel of wheels) {
         wheel.rotation.x -= currentSpeed * 0.8;
