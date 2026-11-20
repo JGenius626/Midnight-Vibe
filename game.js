@@ -1096,6 +1096,7 @@ let gameStarted = false;
 
       // Skyline VIP: stesso argento della strada, solo finestre (niente neon verticali)
       const windowCity = new THREE.Group();
+      windowCity.name = 'windowCity';
       // Palette allineata a buildingMatDark / buildingMatMid della highway
       const bodyMats = [
         new THREE.MeshBasicMaterial({ color: 0x8a93a3 }),
@@ -1795,10 +1796,15 @@ let gameStarted = false;
       window._roomLightCyan = roomLightCyan;
       window._roomLightPurple = roomLightPurple;
       window._roomLightMain = roomLightMain;
+      // partono spente (interruttore OFF)
+      roomLightCyan.intensity = 0;
+      roomLightPurple.intensity = 0;
+      roomLightMain.intensity = 0;
 
             // Fill debole sempre attivo (stanza leggibile anche a interruttore OFF)
-      const roomFillLight = new THREE.AmbientLight(0x2a2040, 0.55);
+      const roomFillLight = new THREE.AmbientLight(0x2a2040, 0.0);
       roomGroup.add(roomFillLight);
+      window._roomFillLight = roomFillLight;
 
 const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       deskLight.position.set(0.0, 3.1, -1.8);
@@ -1809,15 +1815,30 @@ const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       window._updateAlgoMonitorCanvas = drawAlgoMonitorCanvas;
       window._algoTexture = algoTex;
 
-      // Performance: mesh statiche della stanza non ricalcolano la matrix ogni frame
+      // Performance + materiali dimmable (MeshBasic non reagisce alle luci)
+      window._roomDimMats = [];
       roomGroup.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.matrixAutoUpdate = false;
-          obj.updateMatrix();
-          if (obj.material && obj.material.map) {
-            // ok
-          }
+        if (!obj.isMesh) return;
+        obj.matrixAutoUpdate = false;
+        obj.updateMatrix();
+        // non scurire lo skyline fuori dalla finestra
+        let skip = false;
+        let p = obj.parent;
+        while (p) {
+          if (p.name === 'windowCity') { skip = true; break; }
+          p = p.parent;
         }
+        if (skip) return;
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach((m) => {
+          if (m && m.color && !m.userData._dimRegistered) {
+            m.userData._dimRegistered = true;
+            m.userData.baseColor = m.color.clone();
+            window._roomDimMats.push(m);
+            // stato iniziale: stanza spenta
+            m.color.copy(m.userData.baseColor).multiplyScalar(0.08);
+          }
+        });
       });
     }
 
@@ -1875,15 +1896,19 @@ const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
       if (window._bedsideRedLight) {
         window._bedsideRedLight.intensity = on ? 1.4 : 0;
       }
-      // Luci stanza: piene con interruttore ON, soft fill se OFF (niente nero totale)
-      if (window._roomLightMain) {
-        window._roomLightMain.intensity = on ? 2.4 : 0.45;
-      }
-      if (window._roomLightCyan) {
-        window._roomLightCyan.intensity = on ? 3.6 : 0.25;
-      }
-      if (window._roomLightPurple) {
-        window._roomLightPurple.intensity = on ? 3.2 : 0.3;
+      // Luci stanza: ON = illuminate, OFF = buio totale (come prima)
+      if (window._roomLightMain) window._roomLightMain.intensity = on ? 2.4 : 0;
+      if (window._roomLightCyan) window._roomLightCyan.intensity = on ? 3.6 : 0;
+      if (window._roomLightPurple) window._roomLightPurple.intensity = on ? 3.2 : 0;
+      if (window._roomFillLight) window._roomFillLight.intensity = on ? 0.55 : 0;
+      if (window._deskLight) window._deskLight.intensity = on ? 1.8 : 0;
+      // MeshBasic: scuriamo i colori quando OFF (le luci non li influenzano)
+      if (window._roomDimMats) {
+        for (const m of window._roomDimMats) {
+          if (!m.userData.baseColor) continue;
+          if (on) m.color.copy(m.userData.baseColor);
+          else m.color.copy(m.userData.baseColor).multiplyScalar(0.08);
+        }
       }
       if (window._lampShade) {
         window._lampShade.material = on ? window._lampRedMat : window._lampOffMat;
