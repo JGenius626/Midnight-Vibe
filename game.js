@@ -971,8 +971,8 @@ let gameStarted = false;
     const tunnelCount = 3;
     const tunnelSpacing = 280;
     // Geometrie tunnel condivise
-    const tunnelWallGeo = new THREE.BoxGeometry(1.2, 7, 28);
-    const tunnelRoofGeo = new THREE.BoxGeometry(roadWidth + 3, 1.0, 28);
+    const tunnelWallGeo = new THREE.BoxGeometry(1.2, 7, 48);
+    const tunnelRoofGeo = new THREE.BoxGeometry(roadWidth + 3, 1.0, 48);
     const tunnelRingGeo = new THREE.BoxGeometry(roadWidth + 3.2, 0.2, 0.25);
     const tunnelLightGeo = new THREE.BoxGeometry(0.6, 0.12, 0.6);
 
@@ -988,14 +988,14 @@ let gameStarted = false;
       roof.position.set(0, 7.2, 0);
       tGroup.add(roof);
       const ring1 = new THREE.Mesh(tunnelRingGeo, tunnelNeonMat);
-      ring1.position.set(0, 7.5, 14);
+      ring1.position.set(0, 7.5, 24);
       tGroup.add(ring1);
       const ring2 = new THREE.Mesh(tunnelRingGeo, tunnelNeonMat);
-      ring2.position.set(0, 7.5, -14);
+      ring2.position.set(0, 7.5, -24);
       tGroup.add(ring2);
-      for (let li = 0; li < 5; li++) {
+      for (let li = 0; li < 8; li++) {
         const tl = new THREE.Mesh(tunnelLightGeo, tunnelNeonMat);
-        tl.position.set(0, 6.6, -10 + li * 5);
+        tl.position.set(0, 6.6, -18 + li * 5);
         tGroup.add(tl);
       }
       tGroup.position.set(0, 0, -120 - i * tunnelSpacing);
@@ -1050,82 +1050,111 @@ let gameStarted = false;
       backWall.position.set(0, 3.25, -5);
       roomGroup.add(backWall);
 
-      // Parete sinistra intera + finestra a pannello (skyline sempre visibile, zero buchi)
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
-      leftWall.position.set(-7.5, 3.25, 0);
-      roomGroup.add(leftWall);
+      // Parete sinistra con apertura + cornice vera (4 lati) + skyline 3D
+      // Apertura: y 2.25–4.75, z -2.925–0.925
+      const leftWallBack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 4.075), wallMat);
+      leftWallBack.position.set(-7.5, 3.25, -4.9625);
+      roomGroup.add(leftWallBack);
+      const leftWallFront = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 6.075), wallMat);
+      leftWallFront.position.set(-7.5, 3.25, 3.9625);
+      roomGroup.add(leftWallFront);
+      const leftWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.75, 3.85), wallMat);
+      leftWallTop.position.set(-7.5, 5.625, -1.0);
+      roomGroup.add(leftWallTop);
+      const leftWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.25, 3.85), wallMat);
+      leftWallBottom.position.set(-7.5, 1.125, -1.0);
+      roomGroup.add(leftWallBottom);
 
-      // Telaio finestra sul lato interno
-      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 3.9), trimPurpleMat);
-      winFrame.position.set(-7.32, 3.5, -1.0);
-      roomGroup.add(winFrame);
-      const winCrossH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 3.75), trimPurpleMat);
-      winCrossH.position.set(-7.30, 3.5, -1.0);
-      roomGroup.add(winCrossH);
-      const winCrossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.4, 0.08), trimPurpleMat);
-      winCrossV.position.set(-7.30, 3.5, -1.0);
-      roomGroup.add(winCrossV);
+      const frameMat = trimPurpleMat;
+      const frameDepth = 0.14;
+      const frameThick = 0.12;
+      const winW = 3.85, winH = 2.5, winY = 3.5, winZ = -1.0, winX = -7.36;
+      const frTop = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameThick, winW + frameThick * 2), frameMat);
+      frTop.position.set(winX, winY + winH / 2 + frameThick / 2, winZ);
+      roomGroup.add(frTop);
+      const frBot = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameThick, winW + frameThick * 2), frameMat);
+      frBot.position.set(winX, winY - winH / 2 - frameThick / 2, winZ);
+      roomGroup.add(frBot);
+      const frL = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, winH, frameThick), frameMat);
+      frL.position.set(winX, winY, winZ - winW / 2 - frameThick / 2);
+      roomGroup.add(frL);
+      const frR = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, winH, frameThick), frameMat);
+      frR.position.set(winX, winY, winZ + winW / 2 + frameThick / 2);
+      roomGroup.add(frR);
+      const frCH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, winW), frameMat);
+      frCH.position.set(winX + 0.02, winY, winZ);
+      roomGroup.add(frCH);
+      const frCV = new THREE.Mesh(new THREE.BoxGeometry(0.06, winH, 0.06), frameMat);
+      frCV.position.set(winX + 0.02, winY, winZ);
+      roomGroup.add(frCV);
 
-      // Skyline cyberpunk dipinto sul "vetro"
-      const skyCanvas = document.createElement('canvas');
-      skyCanvas.width = 512;
-      skyCanvas.height = 320;
-      const sCtx = skyCanvas.getContext('2d');
-      (function paintWindowSkyline() {
-        const g = sCtx.createLinearGradient(0, 0, 0, 320);
-        g.addColorStop(0, '#03050f');
-        g.addColorStop(0.35, '#0a1435');
-        g.addColorStop(0.7, '#1a1250');
-        g.addColorStop(1, '#2a1860');
-        sCtx.fillStyle = g;
-        sCtx.fillRect(0, 0, 512, 320);
-        const hg = sCtx.createRadialGradient(256, 290, 15, 256, 300, 240);
-        hg.addColorStop(0, 'rgba(140, 70, 220, 0.7)');
-        hg.addColorStop(0.4, 'rgba(60, 30, 120, 0.4)');
-        hg.addColorStop(1, 'rgba(0,0,0,0)');
-        sCtx.fillStyle = hg;
-        sCtx.fillRect(0, 120, 512, 200);
-        // stelle
-        sCtx.fillStyle = '#c8e0ff';
-        for (let i = 0; i < 50; i++) {
-          sCtx.globalAlpha = 0.25 + (i % 5) * 0.12;
-          sCtx.fillRect((i * 41 + 13) % 512, (i * 23 + 7) % 130, 2, 2);
-        }
-        sCtx.globalAlpha = 1;
-        const buildings = [
-          [8, 200, 48, 120], [62, 145, 58, 175], [128, 175, 44, 145],
-          [180, 110, 70, 210], [258, 155, 50, 165], [318, 95, 80, 225],
-          [405, 165, 55, 155], [468, 130, 40, 190]
-        ];
-        buildings.forEach((b, i) => {
-          sCtx.fillStyle = i % 2 === 0 ? '#060814' : '#0a0e1c';
-          sCtx.fillRect(b[0], b[1], b[2], b[3]);
-          const cols = ['#00f0ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080'];
-          for (let row = 0; row < 12; row++) {
-            for (let col = 0; col < 4; col++) {
-              if ((row * 3 + col + i) % 3 === 0) continue;
-              sCtx.fillStyle = cols[(row + col + i) % cols.length];
-              sCtx.globalAlpha = 0.5 + ((row + col) % 4) * 0.12;
-              sCtx.fillRect(b[0] + 5 + col * 11, b[1] + 8 + row * 13, 6, 8);
-            }
-          }
-          sCtx.globalAlpha = 1;
-          sCtx.fillStyle = i % 2 === 0 ? '#00f0ff' : '#ff2a6d';
-          sCtx.fillRect(b[0] + b[2] - 3, b[1] + 12, 3, (b[3] * 0.55) | 0);
-        });
-      })();
-      const skyTex = new THREE.CanvasTexture(skyCanvas);
-      skyTex.needsUpdate = true;
       const winGlass = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.65, 2.35),
-        new THREE.MeshBasicMaterial({ map: skyTex, toneMapped: false })
+        new THREE.PlaneGeometry(winW - 0.1, winH - 0.1),
+        new THREE.MeshBasicMaterial({
+          color: 0x6a9ecc,
+          transparent: true,
+          opacity: 0.15,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
       );
-      // Faccia verso la stanza (da x negativo verso +x)
-      winGlass.position.set(-7.33, 3.5, -1.0);
+      winGlass.position.set(winX + 0.05, winY, winZ);
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
 
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
+      // Skyline 3D fuori (MeshBasic = sempre visibile)
+      const windowCity = new THREE.Group();
+      const bMat = new THREE.MeshBasicMaterial({ color: 0x0a0c18 });
+      const winMats = [
+        new THREE.MeshBasicMaterial({ color: 0x00e8ff }),
+        new THREE.MeshBasicMaterial({ color: 0xa8ff00 }),
+        new THREE.MeshBasicMaterial({ color: 0xff2a6d }),
+        new THREE.MeshBasicMaterial({ color: 0xc070ff }),
+        new THREE.MeshBasicMaterial({ color: 0xffe080 })
+      ];
+      const neonMats = [
+        new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
+        new THREE.MeshBasicMaterial({ color: 0xff2a6d })
+      ];
+      [
+        { x: -11.0, z: -2.5, w: 1.6, h: 9, d: 1.5 },
+        { x: -11.5, z: -0.4, w: 2.0, h: 13, d: 1.7 },
+        { x: -11.2, z: 1.5, w: 1.5, h: 10, d: 1.4 },
+        { x: -12.8, z: -1.6, w: 1.8, h: 15, d: 1.8 },
+        { x: -12.5, z: 0.7, w: 1.6, h: 8, d: 1.3 }
+      ].forEach((cs, idx) => {
+        const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), bMat);
+        body.position.set(cs.x, cs.h * 0.5 - 0.3, cs.z);
+        windowCity.add(body);
+        for (let row = 0; row < 6; row++) {
+          for (let col = 0; col < 2; col++) {
+            if ((row + col + idx) % 2 === 0) continue;
+            const lite = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.28, 0.32),
+              winMats[(row + col + idx) % winMats.length]
+            );
+            lite.position.set(cs.x + cs.w * 0.51, 0.9 + row * 1.5, cs.z - 0.25 + col * 0.4);
+            lite.rotation.y = Math.PI / 2;
+            windowCity.add(lite);
+          }
+        }
+        const neon = new THREE.Mesh(
+          new THREE.BoxGeometry(0.07, cs.h * 0.5, 0.07),
+          neonMats[idx % 2]
+        );
+        neon.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
+        windowCity.add(neon);
+      });
+      const skyPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(14, 10),
+        new THREE.MeshBasicMaterial({ color: 0x12082a, side: THREE.DoubleSide })
+      );
+      skyPlane.position.set(-15, 5, 0);
+      skyPlane.rotation.y = Math.PI / 2;
+      windowCity.add(skyPlane);
+      roomGroup.add(windowCity);
+
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
       rightWall.position.set(7.5, 3.25, 0);
       roomGroup.add(rightWall);
 
@@ -2228,7 +2257,7 @@ const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.5, 14), wallMat);
     let restModalShown = false;
 
     // Tunnel: no pit-stop under tunnels; if no accel input, cruise at 50 km/h until exit then pit
-    const TUNNEL_HALF_LEN = 14.5;
+    const TUNNEL_HALF_LEN = 28;
     function isUnderTunnel() {
       for (const tn of tunnels) {
         if (Math.abs(tn.position.z) < TUNNEL_HALF_LEN) return true;
