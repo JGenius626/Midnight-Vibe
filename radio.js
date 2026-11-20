@@ -97,6 +97,8 @@ function generateShuffledQueue(stationKey, avoidUrl = null) {
   return playlist;
 }
 
+let loadFailTimer = null;
+
 export function loadAndPlayCurrentTrack() {
   if (!radioOn) return;
   if (shuffledQueue.length === 0 || queueIndex >= shuffledQueue.length) {
@@ -105,16 +107,47 @@ export function loadAndPlayCurrentTrack() {
   }
   const track = shuffledQueue[queueIndex];
   lastPlayedUrl = track.url;
+  if (loadFailTimer) {
+    clearTimeout(loadFailTimer);
+    loadFailTimer = null;
+  }
+  updateAllRadioDisplays('[ BUFFERING... ]');
   audioElement.src = track.url;
-  updateAllRadioDisplays(track.title);
   audioElement.volume = volumeSteps[volumeStepIndex] / 100;
-  audioElement.play().catch(() => {});
+  audioElement.play()
+    .then(() => updateAllRadioDisplays(track.title))
+    .catch(() => {
+      updateAllRadioDisplays('[ BUFFERING... ]');
+      loadFailTimer = setTimeout(() => {
+        if (!radioOn) return;
+        queueIndex++;
+        loadAndPlayCurrentTrack();
+      }, 2000);
+    });
 }
 
 if (audioElement) {
   audioElement.addEventListener('ended', () => {
     queueIndex++;
     loadAndPlayCurrentTrack();
+  });
+  audioElement.addEventListener('waiting', () => {
+    if (radioOn) updateAllRadioDisplays('[ BUFFERING... ]');
+  });
+  audioElement.addEventListener('playing', () => {
+    if (radioOn && shuffledQueue.length > 0 && shuffledQueue[queueIndex]) {
+      updateAllRadioDisplays(shuffledQueue[queueIndex].title);
+    }
+  });
+  audioElement.addEventListener('error', () => {
+    if (!radioOn) return;
+    updateAllRadioDisplays('[ BUFFERING... ]');
+    if (loadFailTimer) clearTimeout(loadFailTimer);
+    loadFailTimer = setTimeout(() => {
+      if (!radioOn) return;
+      queueIndex++;
+      loadAndPlayCurrentTrack();
+    }, 2000);
   });
 }
 

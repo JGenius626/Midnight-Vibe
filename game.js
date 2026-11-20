@@ -121,6 +121,7 @@ let gameStarted = false;
 
     // Record personale
     const BEST_KM_KEY = 'midnightVibe_bestKm';
+    const CAREER_KM_KEY = 'midnightVibe_careerKm';
     function loadBestKm() {
       const v = parseFloat(localStorage.getItem(BEST_KM_KEY) || '0');
       return Number.isFinite(v) ? v : 0;
@@ -133,7 +134,19 @@ let gameStarted = false;
       }
       return false;
     }
+    function loadCareerKm() {
+      const v = parseFloat(localStorage.getItem(CAREER_KM_KEY) || '0');
+      return Number.isFinite(v) ? v : 0;
+    }
+    function addCareerKm(delta) {
+      if (delta <= 0) return loadCareerKm();
+      const next = loadCareerKm() + delta;
+      localStorage.setItem(CAREER_KM_KEY, String(next));
+      return next;
+    }
     let bestKm = loadBestKm();
+    let careerKm = loadCareerKm();
+    let lastCareerFlushKm = 0;
 
     // Camera shake da collisione
     let shakeTime = 0;
@@ -180,13 +193,13 @@ let gameStarted = false;
     camera.lookAt(0, 1.2, -10);
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       powerPreference: 'high-performance',
       alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    // Cap DPR a 1.75: meno carico GPU su schermi retina, meno hitch
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    // DPR più basso = meno pixel, frame più stabili in guida e Safehouse
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
     document.body.appendChild(renderer.domElement);
 
     const highwayGroup = new THREE.Group();
@@ -653,6 +666,8 @@ let gameStarted = false;
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c0716, roughness: 0.1, metalness: 0.95 });
     const stripeSilverMat = new THREE.MeshBasicMaterial({ color: 0xe8f0fe });
     const tailRedMat = new THREE.MeshBasicMaterial({ color: stopRedColor });
+    const tailBrakeMat = new THREE.MeshBasicMaterial({ color: 0xff5a9a });
+    const tailBars = [];
     const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x9082b2, metalness: 0.9, roughness: 0.2 });
 
     const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.52, 4.35), silverChassisMat);
@@ -741,11 +756,13 @@ let gameStarted = false;
       const tailBar = new THREE.Mesh(barGeo, tailRedMat);
       tailBar.position.set(bx, 0.68, 2.19);
       carGroup.add(tailBar);
+      tailBars.push(tailBar);
     });
 
     const rearLight = new THREE.PointLight(stopRedColor, 1.5, 4);
     rearLight.position.set(0, 0.68, 2.3);
     carGroup.add(rearLight);
+    let brakingLightsOn = false;
 
     const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.18, 0.14), trimDarkMat);
     diffuser.position.set(0, 0.34, 2.14);
@@ -1298,39 +1315,50 @@ let gameStarted = false;
       screenMatAlgo = new THREE.MeshBasicMaterial({ map: algoTex });
 
       /* =======================================================================
-         CANVAS MONITOR 2 (CENTRO): TERMINAL
+         CANVAS MONITOR 2 (CENTRO): TERMINAL + stats carriera
          ======================================================================= */
       const techCanvas = document.createElement('canvas');
       techCanvas.width = 512;
       techCanvas.height = 256;
       const tCtx = techCanvas.getContext('2d');
-      tCtx.fillStyle = '#04080f';
-      tCtx.fillRect(0, 0, 512, 256);
-      tCtx.strokeStyle = '#00f0ff';
-      tCtx.lineWidth = 3;
-      tCtx.strokeRect(6, 6, 500, 244);
-      tCtx.fillStyle = '#00f0ff';
-      tCtx.font = 'bold 16px "Courier New", monospace';
-      tCtx.textAlign = 'left';
-      tCtx.fillText('> ALGORHYTHM OS  //  terminal', 20, 32);
-      tCtx.fillStyle = '#2a6080';
-      tCtx.fillRect(18, 40, 476, 1);
-      const termLines = [
-        '$ ssh root@night-city',
-        'connected.',
-        '$ cat /proc/drive',
-        'status: ACTIVE | km: streaming...',
-        '$ ./safehouse --mode lounge',
-        'radio: online | monitors: 3 active',
-        '$ _'
-      ];
-      tCtx.font = '15px "Courier New", monospace';
-      termLines.forEach((line, i) => {
-        tCtx.fillStyle = line.startsWith('$') ? '#a8ff00' : '#7ec8e3';
-        tCtx.fillText(line, 24, 62 + i * 22);
-      });
+
+      function drawTechMonitorCanvas() {
+        const career = loadCareerKm();
+        const best = loadBestKm();
+        tCtx.fillStyle = '#04080f';
+        tCtx.fillRect(0, 0, 512, 256);
+        tCtx.strokeStyle = '#00f0ff';
+        tCtx.lineWidth = 3;
+        tCtx.strokeRect(6, 6, 500, 244);
+        tCtx.fillStyle = '#00f0ff';
+        tCtx.font = 'bold 16px "Courier New", monospace';
+        tCtx.textAlign = 'left';
+        tCtx.fillText('> ALGORHYTHM OS  //  terminal', 20, 32);
+        tCtx.fillStyle = '#2a6080';
+        tCtx.fillRect(18, 40, 476, 1);
+        const termLines = [
+          '$ ssh root@night-city',
+          'connected.',
+          '$ cat /proc/drive/stats',
+          `career_km: ${career.toFixed(2)}`,
+          `best_run:  ${best.toFixed(2)} KM`,
+          '$ ./safehouse --mode lounge',
+          'radio: online | monitors: 3 active',
+          '$ _'
+        ];
+        tCtx.font = '15px "Courier New", monospace';
+        termLines.forEach((line, i) => {
+          tCtx.fillStyle = line.startsWith('$') ? '#a8ff00' : '#7ec8e3';
+          if (line.startsWith('career') || line.startsWith('best')) tCtx.fillStyle = '#a8ff00';
+          tCtx.fillText(line, 24, 60 + i * 22);
+        });
+      }
+
+      drawTechMonitorCanvas();
       const techTex = new THREE.CanvasTexture(techCanvas);
       screenMatTech = new THREE.MeshBasicMaterial({ map: techTex });
+      window._updateTechMonitorCanvas = drawTechMonitorCanvas;
+      window._techTexture = techTex;
 
       /* =======================================================================
          CANVAS MONITOR 3 (DESTRA): MIDNIGHT VIBE
@@ -1712,6 +1740,10 @@ let gameStarted = false;
         window._updateAlgoMonitorCanvas();
         window._algoTexture.needsUpdate = true;
       }
+      if (window._updateTechMonitorCanvas) {
+        window._updateTechMonitorCanvas();
+        if (window._techTexture) window._techTexture.needsUpdate = true;
+      }
       playUiClick(180, 0.08, 0.025);
       setPcFanHum(true);
     }
@@ -1890,6 +1922,10 @@ let gameStarted = false;
       camera.fov = 65;
       camera.updateProjectionMatrix();
       applyHomeCameraLook();
+      if (window._updateTechMonitorCanvas) {
+        window._updateTechMonitorCanvas();
+        if (window._techTexture) window._techTexture.needsUpdate = true;
+      }
     }
 
     function returnToPitStop() {
@@ -2068,6 +2104,10 @@ let gameStarted = false;
 
     window.addEventListener('keydown', (e) => {
       resumeAudioContext();
+      if (e.key === 'Escape' && isHomeMode && isMonitorZoomed) {
+        exitMonitorZoomToRoom();
+        return;
+      }
       if (isHomeMode) {
         if (!isMonitorZoomed) {
           if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
@@ -2255,6 +2295,10 @@ let gameStarted = false;
           if (elapsedParked >= PARKED_PROMPT_DELAY_MS && !restModalShown) {
             restModalShown = true;
             const runKm = Math.max(0, totalKm);
+            if (runKm > lastCareerFlushKm) {
+              addCareerKm(runKm - lastCareerFlushKm);
+              lastCareerFlushKm = runKm;
+            }
             modalKmValue.textContent = `${runKm.toFixed(2)} KM`;
             const isNewBest = saveBestKm(runKm);
             refreshBestLabels(isNewBest);
@@ -2279,6 +2323,47 @@ let gameStarted = false;
       const displayKmh = Math.round(currentKmh);
       kmDisplay.textContent = `${safeKm.toFixed(2)} KM`;
       drawAnalogGauge(currentKmh, isAfk && displayKmh === 0);
+
+      // Accumulo carriera (flush ogni ~0.5 km percorsi)
+      if (safeKm - lastCareerFlushKm >= 0.5) {
+        addCareerKm(safeKm - lastCareerFlushKm);
+        lastCareerFlushKm = safeKm;
+      }
+
+      // Stop posteriori più vivi in frenata
+      const wantBrake = keys.down && currentKmh > 2;
+      if (wantBrake !== brakingLightsOn) {
+        brakingLightsOn = wantBrake;
+        for (let bi = 0; bi < tailBars.length; bi++) {
+          tailBars[bi].material = wantBrake ? tailBrakeMat : tailRedMat;
+        }
+        rearLight.intensity = wantBrake ? 3.4 : 1.5;
+        rearLight.color.setHex(wantBrake ? 0xff5a9a : stopRedColor);
+      }
+
+      // FOV dinamico: 65 → ~72 a 320 km/h
+      const targetFov = 65 + Math.min(1, currentKmh / 320) * 7;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, 3.5 * deltaTime);
+        camera.updateProjectionMatrix();
+      }
+
+      // Tinta nebbia / neon lampioni ogni ~100 KM
+      const phase = Math.floor(safeKm / 100) % 4;
+      if (!window._fogTargetColor) {
+        window._fogTargetColor = new THREE.Color(0x0a1028);
+        window._fogPhase = -1;
+      }
+      if (phase !== window._fogPhase) {
+        window._fogPhase = phase;
+        const fogTargets = [0x0a1028, 0x160a28, 0x0a1a18, 0x1a1008];
+        const lampTargets = [cyanColor, 0xc070ff, 0x70ffb0, 0xffb060];
+        window._fogTargetColor.setHex(fogTargets[phase]);
+        if (cyanBulbMat) cyanBulbMat.color.setHex(lampTargets[phase]);
+      }
+      if (scene.fog && scene.fog.color) {
+        scene.fog.color.lerp(window._fogTargetColor, Math.min(1, 0.35 * deltaTime));
+      }
 
       updateEngineSound(currentKmh, isHomeMode || isAfk);
 
