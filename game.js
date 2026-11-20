@@ -244,21 +244,41 @@ let gameStarted = false;
     camera.lookAt(0, 1.2, -10);
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       powerPreference: 'high-performance',
       alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    // Tone mapping cinematografico + spazio colore corretto
+    // Bilanciamento fluidità: DPR contenuto, ACES leggero
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.15));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.05;
     if ('outputColorSpace' in renderer) {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     } else if ('outputEncoding' in renderer) {
       renderer.outputEncoding = THREE.sRGBEncoding;
     }
     document.body.appendChild(renderer.domElement);
+
+    // --- Ottimizzazione texture & materiali ---
+    function optimizeTexture(tex) {
+      if (!tex) return tex;
+      tex.generateMipmaps = false;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.wrapS = tex.wrapS || THREE.ClampToEdgeWrapping;
+      tex.wrapT = tex.wrapT || THREE.ClampToEdgeWrapping;
+      if ('colorSpace' in tex && THREE.SRGBColorSpace) {
+        tex.colorSpace = THREE.SRGBColorSpace;
+      }
+      tex.needsUpdate = true;
+      return tex;
+    }
+    // MeshBasic dove non serve lighting = shader più leggero (meno uniform, meno calcoli)
+    function basicMat(color, opts = {}) {
+      return new THREE.MeshBasicMaterial({ color, ...opts });
+    }
+
 
     const highwayGroup = new THREE.Group();
     scene.add(highwayGroup);
@@ -280,33 +300,21 @@ let gameStarted = false;
     const roadWidth = 14;
 
     const groundGeo = new THREE.PlaneGeometry(500, 300);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0f1c,
-      roughness: 0.55,
-      metalness: 0.35
-    });
+    const groundMat = new THREE.MeshBasicMaterial({ color: 0x0c0f1c });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.05, -120);
     highwayGroup.add(ground);
 
     const roadGeo = new THREE.PlaneGeometry(roadWidth, 260);
-    const roadMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0c16,
-      roughness: 0.12,
-      metalness: 0.85
-    });
+    const roadMat = new THREE.MeshBasicMaterial({ color: 0x0a0c16 });
     const road = new THREE.Mesh(roadGeo, roadMat);
     road.rotation.x = -Math.PI / 2;
     road.position.z = -110;
     highwayGroup.add(road);
 
     const restAreaGeo = new THREE.PlaneGeometry(4, 260);
-    const restAreaMat = new THREE.MeshStandardMaterial({
-      color: 0x0d101c,
-      roughness: 0.22,
-      metalness: 0.7
-    });
+    const restAreaMat = new THREE.MeshBasicMaterial({ color: 0x0d101c });
     const restArea = new THREE.Mesh(restAreaGeo, restAreaMat);
     restArea.rotation.x = -Math.PI / 2;
     restArea.position.set(roadWidth / 2 + 2, -0.01, -110);
@@ -345,7 +353,7 @@ let gameStarted = false;
     pCtx.textAlign = 'center';
     pCtx.textBaseline = 'middle';
     pCtx.fillText('P', 64, 70);
-    const pTex = new THREE.CanvasTexture(pCanvas);
+    const pTex = optimizeTexture(new THREE.CanvasTexture(pCanvas));
     const pMark = new THREE.Mesh(
       new THREE.PlaneGeometry(1.5, 1.5),
       new THREE.MeshBasicMaterial({ map: pTex, transparent: true, side: THREE.DoubleSide })
@@ -381,7 +389,7 @@ let gameStarted = false;
 
     const posts = [];
     const postGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x241740, roughness: 0.3 });
+    const postMat = new THREE.MeshBasicMaterial({ color: 0x241740 });
     const tipGeo = new THREE.BoxGeometry(0.14, 0.12, 0.14);
     const tipMat = new THREE.MeshBasicMaterial({ color: limeColor });
 
@@ -436,8 +444,8 @@ let gameStarted = false;
 
     const lamps = [];
     const lampSpacing = 22;
-    const lampCount = 7;
-    const poleBaseMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
+    const lampCount = 6;
+    const poleBaseMat = new THREE.MeshBasicMaterial({ color: 0x1d1435 });
     const cyanBulbMat = new THREE.MeshBasicMaterial({ color: cyanColor });
     // Geometrie lampione condivise
     const lampVerticalGeo = new THREE.BoxGeometry(0.35, 9, 0.35);
@@ -468,7 +476,7 @@ let gameStarted = false;
     }
 
     const gantryGroup = new THREE.Group();
-    const gantryMat = new THREE.MeshStandardMaterial({ color: 0x1d1435, roughness: 0.3 });
+    const gantryMat = new THREE.MeshBasicMaterial({ color: 0x1d1435 });
     const cableMat = new THREE.MeshBasicMaterial({ color: cyanColor });
 
     const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 0.4), gantryMat);
@@ -496,7 +504,7 @@ let gameStarted = false;
     boardCanvas.width = 512;
     boardCanvas.height = 128;
     const boardCtx = boardCanvas.getContext('2d');
-    const boardTexture = new THREE.CanvasTexture(boardCanvas);
+    const boardTexture = optimizeTexture(new THREE.CanvasTexture(boardCanvas));
 
     function updateBoardTexture(kmText) {
       boardCtx.fillStyle = '#0f1325';
@@ -514,6 +522,7 @@ let gameStarted = false;
 
     let nextTargetKm = 100;
     updateBoardTexture(nextTargetKm);
+    optimizeTexture(boardTexture);
     const boardMat = new THREE.MeshBasicMaterial({ map: boardTexture });
     const boardMesh = new THREE.Mesh(new THREE.BoxGeometry(roadWidth - 2, 2.2, 0.15), boardMat);
     boardMesh.position.set(0, 7.3, 0);
@@ -525,48 +534,40 @@ let gameStarted = false;
     const skylineBuildings = [];
 
     function createWindowTexture() {
+      // 64x128: metà risoluzione, aspetto simile, meno VRAM/bandwidth
       const c = document.createElement('canvas');
-      c.width = 128;
-      c.height = 256;
+      c.width = 64;
+      c.height = 128;
       const ctx = c.getContext('2d');
-      // facciata argento scuro
       ctx.fillStyle = '#3a4250';
-      ctx.fillRect(0, 0, 128, 256);
+      ctx.fillRect(0, 0, 64, 128);
       const winColors = ['#00e8ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080', '#b8d4ff'];
-      for (let row = 0; row < 14; row++) {
-        for (let col = 0; col < 5; col++) {
+      for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 4; col++) {
           if (Math.random() > 0.22) {
-            ctx.fillStyle = winColors[(row * 5 + col) % winColors.length];
+            ctx.fillStyle = winColors[(row * 4 + col) % winColors.length];
             ctx.globalAlpha = 0.55 + Math.random() * 0.4;
-            ctx.fillRect(6 + col * 24, 8 + row * 17, 16, 12);
+            ctx.fillRect(3 + col * 15, 4 + row * 12, 10, 8);
             ctx.globalAlpha = 1;
           }
         }
       }
       const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
-      return tex;
+      return optimizeTexture(tex);
     }
     const windowTex = createWindowTexture();
+    const windowTexFacadeMat = new THREE.MeshBasicMaterial({ map: windowTex, transparent: true, opacity: 0.85 });
 
-    // Skyline strada: palette argento metallico (stesso stile Safehouse)
-    const buildingMatDark = new THREE.MeshStandardMaterial({
+    // Skyline: MeshBasic + map (niente lighting per-pixel sui grattacieli)
+    const buildingMatDark = new THREE.MeshBasicMaterial({
       color: 0x8a93a3,
-      map: windowTex,
-      emissive: 0x2a3344,
-      emissiveIntensity: 0.25,
-      roughness: 0.35,
-      metalness: 0.75
+      map: windowTex
     });
-    const buildingMatMid = new THREE.MeshStandardMaterial({
+    const buildingMatMid = new THREE.MeshBasicMaterial({
       color: 0xb0b8c6,
-      map: windowTex,
-      emissive: 0x333c4a,
-      emissiveIntensity: 0.2,
-      roughness: 0.3,
-      metalness: 0.82
+      map: windowTex
     });
 
     const neonStripCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
@@ -584,7 +585,7 @@ let gameStarted = false;
       { w: 7.0, h: 24, d: 6.0, dist: 21, strip: neonStripMagenta, antenna: false }
     ];
 
-    const skylineCount = 18;
+    const skylineCount = 12;
     const skylineSpacing = 26;
 
     for (let i = 0; i < skylineCount; i++) {
@@ -602,29 +603,22 @@ let gameStarted = false;
 
       const facade = new THREE.Mesh(
         new THREE.PlaneGeometry(spec.w * 0.92, spec.h * 0.9),
-        new THREE.MeshBasicMaterial({ map: windowTex, transparent: true, opacity: 0.85 })
+        windowTexFacadeMat
       );
       facade.position.set(-side * (spec.w / 2 + 0.02), spec.h * 0.5, 0);
       facade.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       bGroup.add(facade);
 
-      if (spec.strip) {
-        const stripGeo = new THREE.BoxGeometry(0.12, spec.h * 0.78, 0.28);
-        const stripMesh = new THREE.Mesh(stripGeo, spec.strip);
-        stripMesh.position.set(-side * (spec.w / 2 + 0.08), spec.h * 0.48, 0);
-        bGroup.add(stripMesh);
-      }
-
       const baseMesh = new THREE.Mesh(
         new THREE.BoxGeometry(spec.w + 0.4, 1.2, spec.d + 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x4a5260, roughness: 0.4, metalness: 0.7 })
+        new THREE.MeshBasicMaterial({ color: 0x4a5260 })
       );
       baseMesh.position.y = 0.6;
       bGroup.add(baseMesh);
 
       if (spec.antenna) {
         const antGeo = new THREE.BoxGeometry(0.14, 5.0, 0.14);
-        const antMesh = new THREE.Mesh(antGeo, new THREE.MeshStandardMaterial({ color: 0x1a1528, metalness: 0.8 }));
+        const antMesh = new THREE.Mesh(antGeo, new THREE.MeshBasicMaterial({ color: 0x1a1528 }));
         antMesh.position.y = spec.h + 2.5;
         bGroup.add(antMesh);
         const beaconMesh = new THREE.Mesh(
@@ -663,12 +657,6 @@ let gameStarted = false;
         horizonSkyline.add(crownMesh);
       }
       if (i % 3 === 0) {
-        const vStrip = new THREE.Mesh(
-          new THREE.BoxGeometry(0.25, hb.h * 0.6, 0.25),
-          neonStripLime
-        );
-        vStrip.position.set(hb.x + hb.w * 0.3, hb.h * 0.4, -194);
-        horizonSkyline.add(vStrip);
       }
     }
     highwayGroup.add(horizonSkyline);
@@ -703,7 +691,7 @@ let gameStarted = false;
     }
 
     const stopSignGroup = new THREE.Group();
-    const poleStop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x38255c, metalness: 0.8, roughness: 0.2 }));
+    const poleStop = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), new THREE.MeshBasicMaterial({ color: 0x38255c }));
     poleStop.position.set(0, 0.9, -0.06);
     stopSignGroup.add(poleStop);
 
@@ -873,13 +861,13 @@ let gameStarted = false;
 
     // --- Pool materiali/geometrie traffico (condivisi, zero alloc a runtime) ---
     const trafficBodyMats = trafficColors.map(
-      (col) => new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 })
+      (col) => new THREE.MeshBasicMaterial({ color: col })
     );
     const trafficBikeBodyMats = trafficColors.map(
-      (col) => new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.85 })
+      (col) => new THREE.MeshBasicMaterial({ color: col })
     );
-    const trafficRoofMat = new THREE.MeshStandardMaterial({ color: 0x1b112b, roughness: 0.4 });
-    const trafficDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a1228, roughness: 0.4, metalness: 0.6 });
+    const trafficRoofMat = new THREE.MeshBasicMaterial({ color: 0x1b112b });
+    const trafficDarkMat = new THREE.MeshBasicMaterial({ color: 0x1a1228 });
     const trafficWheelMat = new THREE.MeshBasicMaterial({ color: 0x111118 });
     const trafficLightWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const trafficLightRedMat = new THREE.MeshBasicMaterial({ color: 0xff2a6d });
@@ -944,7 +932,7 @@ let gameStarted = false;
       return group;
     }
 
-    const trafficCount = 8;
+    const trafficCount = 6;
     const spacingZ = 90;
     for (let i = 0; i < trafficCount; i++) {
       const isIncoming = i < 6;
@@ -970,11 +958,7 @@ let gameStarted = false;
     }
 
     const tunnels = [];
-    const tunnelMat = new THREE.MeshStandardMaterial({
-      color: 0x12151f,
-      roughness: 0.7,
-      metalness: 0.3
-    });
+    const tunnelMat = new THREE.MeshBasicMaterial({ color: 0x1a1528 });
     const tunnelNeonMat = new THREE.MeshBasicMaterial({ color: cyanColor });
     const tunnelCount = 3;
     const tunnelSpacing = 280;
@@ -1018,16 +1002,16 @@ let gameStarted = false;
     const pcClickables = [];
 
     function buildCyberpunkRoom() {
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x221a42, roughness: 0.55, metalness: 0.15 });
-      const trimPurpleMat = new THREE.MeshStandardMaterial({ color: 0x2e1a5e, roughness: 0.4 });
-      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x221538, roughness: 0.4, metalness: 0.3 });
-      const bedSheetMat = new THREE.MeshStandardMaterial({ color: 0x42227d, roughness: 0.7 });
-      const pillowMat = new THREE.MeshStandardMaterial({ color: 0xbac7db, roughness: 0.5 });
+      const wallMat = new THREE.MeshBasicMaterial({ color: 0x221a42 });
+      const trimPurpleMat = new THREE.MeshBasicMaterial({ color: 0x2e1a5e });
+      const darkWoodMat = new THREE.MeshBasicMaterial({ color: 0x221538 });
+      const bedSheetMat = new THREE.MeshBasicMaterial({ color: 0x42227d });
+      const pillowMat = new THREE.MeshBasicMaterial({ color: 0xbac7db });
 
       const glowCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
       const glowLime = new THREE.MeshBasicMaterial({ color: limeColor });
       const glowPink = new THREE.MeshBasicMaterial({ color: stopRedColor });
-      const ledOffMat = new THREE.MeshStandardMaterial({ color: 0x161424, roughness: 0.5, metalness: 0.2 });
+      const ledOffMat = new THREE.MeshBasicMaterial({ color: 0x161424 });
 
       matGlowCyan = glowCyan;
       matGlowLime = glowLime;
@@ -1042,11 +1026,11 @@ let gameStarted = false;
         roomLedStrips.push(mesh);
       }
 
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), new THREE.MeshStandardMaterial({ color: 0x1a1635, roughness: 0.4 }));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), new THREE.MeshBasicMaterial({ color: 0x1a1635 }));
       floor.rotation.x = -Math.PI / 2;
       roomGroup.add(floor);
 
-      const rug = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.03, 3.8), new THREE.MeshStandardMaterial({ color: 0x6b1f8a, roughness: 0.75, emissive: 0x2a0a40, emissiveIntensity: 0.25 }));
+      const rug = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.03, 3.8), new THREE.MeshBasicMaterial({ color: 0x7a2a9a }));
       rug.position.set(0, 0.015, 0.5);
       roomGroup.add(rug);
       const rugBorder = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.025, 3.95), glowCyan);
@@ -1110,26 +1094,23 @@ let gameStarted = false;
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
 
-      // Skyline VIP: argento, profondità, insegna NIGHT leggibile
+      // Skyline VIP: stesso argento della strada, solo finestre (niente neon verticali)
       const windowCity = new THREE.Group();
+      // Palette allineata a buildingMatDark / buildingMatMid della highway
       const bodyMats = [
-        new THREE.MeshBasicMaterial({ color: 0xc8d0dc }),
-        new THREE.MeshBasicMaterial({ color: 0xa8b2c0 }),
-        new THREE.MeshBasicMaterial({ color: 0xd8dee8 }),
-        new THREE.MeshBasicMaterial({ color: 0x909aaa })
+        new THREE.MeshBasicMaterial({ color: 0x8a93a3 }),
+        new THREE.MeshBasicMaterial({ color: 0xb0b8c6 }),
+        new THREE.MeshBasicMaterial({ color: 0x9aa3b2 }),
+        new THREE.MeshBasicMaterial({ color: 0xc0c8d4 })
       ];
       const winMats = [
-        new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
+        new THREE.MeshBasicMaterial({ color: 0x00e8ff }),
         new THREE.MeshBasicMaterial({ color: 0xa8ff00 }),
         new THREE.MeshBasicMaterial({ color: 0xff2a6d }),
-        new THREE.MeshBasicMaterial({ color: 0xffb86c }),
         new THREE.MeshBasicMaterial({ color: 0xc070ff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
+        new THREE.MeshBasicMaterial({ color: 0xffe080 }),
+        new THREE.MeshBasicMaterial({ color: 0xb8d4ff })
       ];
-      const neonCyan = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-      const neonPink = new THREE.MeshBasicMaterial({ color: 0xff2a6d });
-      const neonLime = new THREE.MeshBasicMaterial({ color: 0xa8ff00 });
-      // Layer vicino + lontano per profondità (non attaccati al vetro)
       const cityBuildings = [
         { x: -18, z: -5.0, w: 3.4, h: 20, d: 3.0 },
         { x: -19, z: -1.0, w: 4.0, h: 28, d: 3.4 },
@@ -1142,12 +1123,6 @@ let gameStarted = false;
         const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), bodyMats[idx % 4]);
         body.position.set(cs.x, cs.h * 0.42, cs.z);
         windowCity.add(body);
-        const edge = new THREE.Mesh(
-          new THREE.BoxGeometry(0.18, cs.h * 0.65, 0.18),
-          idx % 2 === 0 ? neonCyan : neonPink
-        );
-        edge.position.set(cs.x + cs.w * 0.52, cs.h * 0.38, cs.z);
-        windowCity.add(edge);
         for (let row = 0; row < 12; row++) {
           for (let col = 0; col < 3; col++) {
             if ((row + col + idx) % 2 === 0) continue;
@@ -1165,33 +1140,28 @@ let gameStarted = false;
           }
         }
       });
-      // Torre + insegna grande (riempie bene il vetro anche da lontano)
+      // Torre landmark argento + insegna NIGHT (niente bordo neon)
       const tower = new THREE.Mesh(
         new THREE.BoxGeometry(4.5, 48, 4.5),
-        new THREE.MeshBasicMaterial({ color: 0xb8c2d0 })
+        new THREE.MeshBasicMaterial({ color: 0xb0b8c6 })
       );
       tower.position.set(-22, 21, -1.0);
       windowCity.add(tower);
-      const towerEdge = new THREE.Mesh(new THREE.BoxGeometry(0.25, 36, 0.25), neonLime);
-      towerEdge.position.set(-19.6, 18, -1.0);
-      windowCity.add(towerEdge);
       const signCanvas = document.createElement('canvas');
       signCanvas.width = 512;
       signCanvas.height = 128;
       const sg = signCanvas.getContext('2d');
-      sg.fillStyle = '#0a0610';
+      sg.fillStyle = '#1a2030';
       sg.fillRect(0, 0, 512, 128);
-      sg.strokeStyle = '#00f0ff';
+      sg.strokeStyle = '#8a93a3';
       sg.lineWidth = 6;
       sg.strokeRect(6, 6, 500, 116);
-      sg.fillStyle = '#a8ff00';
+      sg.fillStyle = '#e8f0ff';
       sg.font = 'bold 72px Courier New, monospace';
       sg.textAlign = 'center';
       sg.textBaseline = 'middle';
       sg.fillText('NIGHT', 256, 68);
-      const signTex = new THREE.CanvasTexture(signCanvas);
-      signTex.needsUpdate = true;
-      if (signTex.colorSpace !== undefined) signTex.colorSpace = THREE.SRGBColorSpace;
+      const signTex = optimizeTexture(new THREE.CanvasTexture(signCanvas));
       const sign = new THREE.Mesh(
         new THREE.PlaneGeometry(7.5, 1.9),
         new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false, side: THREE.DoubleSide })
@@ -1199,12 +1169,6 @@ let gameStarted = false;
       sign.position.set(-19.7, 24, -1.0);
       sign.rotation.y = Math.PI / 2;
       windowCity.add(sign);
-      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6, 0.5), neonCyan);
-      tip.position.set(-22, 47, -1.0);
-      windowCity.add(tip);
-      const tipGlow = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), neonPink);
-      tipGlow.position.set(-22, 50.5, -1.0);
-      windowCity.add(tipGlow);
 
       const skyPlane = new THREE.Mesh(
         new THREE.PlaneGeometry(55, 40),
@@ -1228,7 +1192,7 @@ let gameStarted = false;
       // Tetto: stanza chiusa (niente cielo visibile)
       const ceiling = new THREE.Mesh(
         new THREE.BoxGeometry(16, 0.25, 14),
-        new THREE.MeshStandardMaterial({ color: 0x1a1430, roughness: 0.75, metalness: 0.1 })
+        new THREE.MeshBasicMaterial({ color: 0x1a1430 })
       );
       ceiling.position.set(0, 6.55, 0);
       roomGroup.add(ceiling);
@@ -1242,8 +1206,8 @@ let gameStarted = false;
 
       // Interruttore luce sulla parete destra (base grigio scuro, pulsante bianco)
       const switchGroup = new THREE.Group();
-      const switchPlateMat = new THREE.MeshStandardMaterial({ color: 0x2a2d36, roughness: 0.45, metalness: 0.35 });
-      const switchBtnMat = new THREE.MeshStandardMaterial({ color: 0xf4f6fa, roughness: 0.25, metalness: 0.1, emissive: 0x222630, emissiveIntensity: 0.25 });
+      const switchPlateMat = new THREE.MeshBasicMaterial({ color: 0x2a2d36 });
+      const switchBtnMat = new THREE.MeshBasicMaterial({ color: 0xf4f6fa });
 
       const switchPlate = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.44, 0.30), switchPlateMat);
       switchPlate.userData = { isLightSwitch: true };
@@ -1345,7 +1309,7 @@ let gameStarted = false;
         roomGroup.add(poster);
         const frame = new THREE.Mesh(
           new THREE.BoxGeometry(1.58, 2.18, 0.04),
-          new THREE.MeshStandardMaterial({ color: 0x151820, roughness: 0.6 })
+          new THREE.MeshBasicMaterial({ color: 0x151820 })
         );
         frame.position.copy(poster.position);
         frame.rotation.copy(poster.rotation);
@@ -1371,7 +1335,7 @@ let gameStarted = false;
       mattress.position.set(0, 0.58, 0.05);
       bedGroup.add(mattress);
 
-      const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.52, 0.14, 2.7), new THREE.MeshStandardMaterial({ color: 0x5528a8, roughness: 0.8 }));
+      const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.52, 0.14, 2.7), new THREE.MeshBasicMaterial({ color: 0x5528a8 }));
       blanket.position.set(0, 0.72, 0.75);
       bedGroup.add(blanket);
 
@@ -1401,7 +1365,7 @@ let gameStarted = false;
       window._bedsideRedLight = bedsideRedLight;
       window._lampShade = lampShade;
       window._lampRedMat = lampRedMat;
-      window._lampOffMat = new THREE.MeshStandardMaterial({ color: 0x2a2035, roughness: 0.6 });
+      window._lampOffMat = new THREE.MeshBasicMaterial({ color: 0x2a2035 });
       bedsideRedLight.intensity = 0; // parte spenta con stanza
       lampShade.material = window._lampOffMat;
 
@@ -1420,7 +1384,7 @@ let gameStarted = false;
         deskGroup.add(leg);
       });
 
-      const lightGrayPCMat = new THREE.MeshStandardMaterial({ color: 0xd0d8e2, metalness: 0.85, roughness: 0.18 });
+      const lightGrayPCMat = new THREE.MeshBasicMaterial({ color: 0xd0d8e2 });
       const pcCase = new THREE.Mesh(new THREE.BoxGeometry(0.52, 1.05, 1.05), lightGrayPCMat);
       pcCase.position.set(2.85, 1.93, -0.1);
       pcCase.userData = { isPcCase: true };
@@ -1552,7 +1516,7 @@ let gameStarted = false;
       }
 
       drawAlgoMonitorCanvas();
-      const algoTex = new THREE.CanvasTexture(algoCanvas);
+      const algoTex = optimizeTexture(new THREE.CanvasTexture(algoCanvas));
       screenMatAlgo = new THREE.MeshBasicMaterial({ map: algoTex });
 
       /* =======================================================================
@@ -1596,7 +1560,7 @@ let gameStarted = false;
       }
 
       drawTechMonitorCanvas();
-      const techTex = new THREE.CanvasTexture(techCanvas);
+      const techTex = optimizeTexture(new THREE.CanvasTexture(techCanvas));
       screenMatTech = new THREE.MeshBasicMaterial({ map: techTex });
       window._updateTechMonitorCanvas = drawTechMonitorCanvas;
       window._techTexture = techTex;
@@ -1692,7 +1656,7 @@ let gameStarted = false;
       }
 
       drawMonitorCanvas(false);
-      const monitorTexture = new THREE.CanvasTexture(monCanvas);
+      const monitorTexture = optimizeTexture(new THREE.CanvasTexture(monCanvas));
       screenMatDrive = new THREE.MeshBasicMaterial({ map: monitorTexture });
 
       offScreenMat = new THREE.MeshBasicMaterial({ color: 0x020408 });
@@ -1712,7 +1676,7 @@ let gameStarted = false;
         deskGroup.add(base);
         const frame = new THREE.Mesh(
           new THREE.BoxGeometry(1.35, 0.92, 0.08),
-          new THREE.MeshStandardMaterial({ color: 0x130d24, roughness: 0.3 })
+          new THREE.MeshBasicMaterial({ color: 0x130d24 })
         );
         frame.position.set(cfg.x, 2.15, -0.42);
         frame.userData = { monitorFrame: true, monitorId: cfg.id };
@@ -1729,7 +1693,7 @@ let gameStarted = false;
         deskGroup.add(screen);
       });
 
-      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshStandardMaterial({ color: 0x221538 }));
+      const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.34), new THREE.MeshBasicMaterial({ color: 0x221538 }));
       keyboard.position.set(0.0, 1.445, 0.35);
       deskGroup.add(keyboard);
       const kbGlow = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.01, 0.31), ledOffMat);
@@ -1737,7 +1701,7 @@ let gameStarted = false;
       kbGlowMesh = kbGlow;
       deskGroup.add(kbGlow);
 
-      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshStandardMaterial({ color: 0x221538 }));
+      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.26), new THREE.MeshBasicMaterial({ color: 0x221538 }));
       mouse.position.set(0.85, 1.45, 0.35);
       deskGroup.add(mouse);
       const mouseGlow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.01, 0.18), ledOffMat);
@@ -1790,7 +1754,7 @@ let gameStarted = false;
       });
 
       const cbRadioGroup = new THREE.Group();
-      const cbBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.45), new THREE.MeshStandardMaterial({ color: 0x18122c, metalness: 0.8, roughness: 0.3 }));
+      const cbBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.45), new THREE.MeshBasicMaterial({ color: 0x18122c }));
       cbBody.position.y = 0.25;
       cbRadioGroup.add(cbBody);
 
@@ -1813,7 +1777,7 @@ let gameStarted = false;
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.5, 12), trimPurpleMat);
       pot.position.set(5.8, 0.25, -4.0);
       roomGroup.add(pot);
-      const plantLeaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0x228b55, emissive: 0x0f4a28 }));
+      const plantLeaves = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), new THREE.MeshBasicMaterial({ color: 0x228b55 }));
       plantLeaves.position.set(5.8, 0.8, -4.0);
       roomGroup.add(plantLeaves);
 
@@ -2474,7 +2438,7 @@ const deskLight = new THREE.PointLight(0xd0e8ff, 1.8, 8);
         // Equalizer: aggiorna 1 frame su 3 (meno lag in Safehouse)
         if (pcPoweredOn && Radio.radioOn && window._updateAlgoMonitorCanvas) {
           window._eqFrame = (window._eqFrame || 0) + 1;
-          if (window._eqFrame % 5 === 0) {
+          if (window._eqFrame % 6 === 0) {
             window._updateAlgoMonitorCanvas();
             if (window._algoTexture) window._algoTexture.needsUpdate = true;
           }
