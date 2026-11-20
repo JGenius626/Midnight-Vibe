@@ -244,13 +244,20 @@ let gameStarted = false;
     camera.lookAt(0, 1.2, -10);
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: false,
+      antialias: true,
       powerPreference: 'high-performance',
       alpha: false
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    // DPR più basso = meno pixel, frame più stabili in guida e Safehouse
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    // Tone mapping cinematografico + spazio colore corretto
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    if ('outputColorSpace' in renderer) {
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+    } else if ('outputEncoding' in renderer) {
+      renderer.outputEncoding = THREE.sRGBEncoding;
+    }
     document.body.appendChild(renderer.domElement);
 
     const highwayGroup = new THREE.Group();
@@ -522,43 +529,44 @@ let gameStarted = false;
       c.width = 128;
       c.height = 256;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#12101f';
+      // facciata argento scuro
+      ctx.fillStyle = '#3a4250';
       ctx.fillRect(0, 0, 128, 256);
-      const winColors = ['#1a3a5c', '#2a2040', '#0e2a3a', '#3a2850', '#152838', '#1e3050'];
+      const winColors = ['#00e8ff', '#a8ff00', '#ff2a6d', '#c070ff', '#ffe080', '#b8d4ff'];
       for (let row = 0; row < 14; row++) {
         for (let col = 0; col < 5; col++) {
-          if (Math.random() > 0.28) {
+          if (Math.random() > 0.22) {
             ctx.fillStyle = winColors[(row * 5 + col) % winColors.length];
+            ctx.globalAlpha = 0.55 + Math.random() * 0.4;
             ctx.fillRect(6 + col * 24, 8 + row * 17, 16, 12);
-            if (Math.random() > 0.7) {
-              ctx.fillStyle = 'rgba(180, 220, 255, 0.35)';
-              ctx.fillRect(6 + col * 24, 8 + row * 17, 16, 12);
-            }
+            ctx.globalAlpha = 1;
           }
         }
       }
       const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
       return tex;
     }
     const windowTex = createWindowTexture();
 
+    // Skyline strada: palette argento metallico (stesso stile Safehouse)
     const buildingMatDark = new THREE.MeshStandardMaterial({
-      color: 0x14101f,
+      color: 0x8a93a3,
       map: windowTex,
-      emissive: 0x1a1030,
-      emissiveIntensity: 0.35,
-      roughness: 0.55,
-      metalness: 0.25
+      emissive: 0x2a3344,
+      emissiveIntensity: 0.25,
+      roughness: 0.35,
+      metalness: 0.75
     });
     const buildingMatMid = new THREE.MeshStandardMaterial({
-      color: 0x1a1428,
+      color: 0xb0b8c6,
       map: windowTex,
-      emissive: 0x241550,
-      emissiveIntensity: 0.3,
-      roughness: 0.5,
-      metalness: 0.3
+      emissive: 0x333c4a,
+      emissiveIntensity: 0.2,
+      roughness: 0.3,
+      metalness: 0.82
     });
 
     const neonStripCyan = new THREE.MeshBasicMaterial({ color: cyanColor });
@@ -609,7 +617,7 @@ let gameStarted = false;
 
       const baseMesh = new THREE.Mesh(
         new THREE.BoxGeometry(spec.w + 0.4, 1.2, spec.d + 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x0c0a14, roughness: 0.7, metalness: 0.2 })
+        new THREE.MeshStandardMaterial({ color: 0x4a5260, roughness: 0.4, metalness: 0.7 })
       );
       baseMesh.position.y = 0.6;
       bGroup.add(baseMesh);
@@ -1102,13 +1110,13 @@ let gameStarted = false;
       winGlass.rotation.y = Math.PI / 2;
       roomGroup.add(winGlass);
 
-      // Skyline VIP: edifici argento, distanza media, contrasto sul cielo scuro
+      // Skyline VIP: argento, profondità, insegna NIGHT leggibile
       const windowCity = new THREE.Group();
       const bodyMats = [
-        new THREE.MeshBasicMaterial({ color: 0xc5ccd8 }), // argento chiaro
-        new THREE.MeshBasicMaterial({ color: 0x9aa6b8 }), // argento medio
-        new THREE.MeshBasicMaterial({ color: 0xd8dee8 }), // alluminio
-        new THREE.MeshBasicMaterial({ color: 0x8892a4 })  // steel
+        new THREE.MeshBasicMaterial({ color: 0xc8d0dc }),
+        new THREE.MeshBasicMaterial({ color: 0xa8b2c0 }),
+        new THREE.MeshBasicMaterial({ color: 0xd8dee8 }),
+        new THREE.MeshBasicMaterial({ color: 0x909aaa })
       ];
       const winMats = [
         new THREE.MeshBasicMaterial({ color: 0x00f0ff }),
@@ -1121,92 +1129,88 @@ let gameStarted = false;
       const neonCyan = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
       const neonPink = new THREE.MeshBasicMaterial({ color: 0xff2a6d });
       const neonLime = new THREE.MeshBasicMaterial({ color: 0xa8ff00 });
-      // x -16…-24: lontani dal vetro ma ancora leggibili
+      // Layer vicino + lontano per profondità (non attaccati al vetro)
       const cityBuildings = [
-        { x: -16.5, z: -4.2, w: 3.0, h: 18, d: 2.8 },
-        { x: -17.5, z: -1.0, w: 3.6, h: 26, d: 3.2 },
-        { x: -16.8, z: 2.2, w: 2.8, h: 20, d: 2.6 },
-        { x: -20.5, z: -2.8, w: 3.4, h: 30, d: 3.0 },
-        { x: -21.0, z: 1.0, w: 3.2, h: 22, d: 2.8 },
-        { x: -24.0, z: -1.0, w: 4.2, h: 34, d: 3.8 }
+        { x: -18, z: -5.0, w: 3.4, h: 20, d: 3.0 },
+        { x: -19, z: -1.0, w: 4.0, h: 28, d: 3.4 },
+        { x: -18.5, z: 3.0, w: 3.2, h: 22, d: 2.8 },
+        { x: -24, z: -3.5, w: 4.0, h: 34, d: 3.5 },
+        { x: -25, z: 1.5, w: 3.6, h: 26, d: 3.2 },
+        { x: -30, z: -1.0, w: 5.0, h: 40, d: 4.2 }
       ];
       cityBuildings.forEach((cs, idx) => {
         const body = new THREE.Mesh(new THREE.BoxGeometry(cs.w, cs.h, cs.d), bodyMats[idx % 4]);
         body.position.set(cs.x, cs.h * 0.42, cs.z);
         windowCity.add(body);
-        // sottile bordo neon (non un secondo edificio)
         const edge = new THREE.Mesh(
-          new THREE.BoxGeometry(0.15, cs.h * 0.7, 0.15),
+          new THREE.BoxGeometry(0.18, cs.h * 0.65, 0.18),
           idx % 2 === 0 ? neonCyan : neonPink
         );
-        edge.position.set(cs.x + cs.w * 0.52, cs.h * 0.4, cs.z);
+        edge.position.set(cs.x + cs.w * 0.52, cs.h * 0.38, cs.z);
         windowCity.add(edge);
-        for (let row = 0; row < 11; row++) {
+        for (let row = 0; row < 12; row++) {
           for (let col = 0; col < 3; col++) {
             if ((row + col + idx) % 2 === 0) continue;
             const lite = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.5, 0.6),
+              new THREE.PlaneGeometry(0.55, 0.65),
               winMats[(row + col + idx) % winMats.length]
             );
             lite.position.set(
               cs.x + cs.w * 0.51,
-              1.4 + row * 1.55,
-              cs.z - cs.d * 0.28 + col * 0.7
+              1.5 + row * 1.7,
+              cs.z - cs.d * 0.28 + col * 0.75
             );
             lite.rotation.y = Math.PI / 2;
             windowCity.add(lite);
           }
         }
       });
-      // Torre landmark argento + insegna
+      // Torre + insegna grande (riempie bene il vetro anche da lontano)
       const tower = new THREE.Mesh(
-        new THREE.BoxGeometry(3.2, 38, 3.2),
-        new THREE.MeshBasicMaterial({ color: 0xb0b8c8 })
+        new THREE.BoxGeometry(4.5, 48, 4.5),
+        new THREE.MeshBasicMaterial({ color: 0xb8c2d0 })
       );
-      tower.position.set(-19.0, 16.5, -1.0);
+      tower.position.set(-22, 21, -1.0);
       windowCity.add(tower);
-      const towerEdge = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 30, 0.2),
-        neonLime
-      );
-      towerEdge.position.set(-17.3, 15, -1.0);
+      const towerEdge = new THREE.Mesh(new THREE.BoxGeometry(0.25, 36, 0.25), neonLime);
+      towerEdge.position.set(-19.6, 18, -1.0);
       windowCity.add(towerEdge);
       const signCanvas = document.createElement('canvas');
-      signCanvas.width = 256;
-      signCanvas.height = 64;
+      signCanvas.width = 512;
+      signCanvas.height = 128;
       const sg = signCanvas.getContext('2d');
       sg.fillStyle = '#0a0610';
-      sg.fillRect(0, 0, 256, 64);
+      sg.fillRect(0, 0, 512, 128);
       sg.strokeStyle = '#00f0ff';
-      sg.lineWidth = 4;
-      sg.strokeRect(4, 4, 248, 56);
+      sg.lineWidth = 6;
+      sg.strokeRect(6, 6, 500, 116);
       sg.fillStyle = '#a8ff00';
-      sg.font = 'bold 34px Courier New, monospace';
+      sg.font = 'bold 72px Courier New, monospace';
       sg.textAlign = 'center';
       sg.textBaseline = 'middle';
-      sg.fillText('NIGHT', 128, 34);
+      sg.fillText('NIGHT', 256, 68);
       const signTex = new THREE.CanvasTexture(signCanvas);
       signTex.needsUpdate = true;
+      if (signTex.colorSpace !== undefined) signTex.colorSpace = THREE.SRGBColorSpace;
       const sign = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.8, 0.95),
+        new THREE.PlaneGeometry(7.5, 1.9),
         new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false, side: THREE.DoubleSide })
       );
-      sign.position.set(-17.35, 20, -1.0);
+      sign.position.set(-19.7, 24, -1.0);
       sign.rotation.y = Math.PI / 2;
       windowCity.add(sign);
-      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.5, 0.4), neonCyan);
-      tip.position.set(-19.0, 37.5, -1.0);
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6, 0.5), neonCyan);
+      tip.position.set(-22, 47, -1.0);
       windowCity.add(tip);
-      const tipGlow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), neonPink);
-      tipGlow.position.set(-19.0, 40, -1.0);
+      const tipGlow = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), neonPink);
+      tipGlow.position.set(-22, 50.5, -1.0);
       windowCity.add(tipGlow);
 
-      // cielo scuro per far risaltare l'argento
       const skyPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(40, 30),
-        new THREE.MeshBasicMaterial({ color: 0x080c1a, side: THREE.DoubleSide })
+        new THREE.PlaneGeometry(55, 40),
+        new THREE.MeshBasicMaterial({ color: 0x060a14, side: THREE.DoubleSide })
       );
-      skyPlane.position.set(-28, 12, -1);
+      skyPlane.position.set(-36, 14, -1);
       skyPlane.rotation.y = Math.PI / 2;
       windowCity.add(skyPlane);
 
